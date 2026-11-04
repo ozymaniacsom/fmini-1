@@ -633,19 +633,25 @@ static int32_t env_tick(track_t *t, voice_t *v)
     case 3:
 #if FELUCCA_FMINI_ONLY
         v->env -= mulq16(v->env, T_ESYNC(t)[1]);        /* the DECAY knob is also the release time (no REL knob) */
+        if (v->env < (1 << 14)) {                       /* (Ozy's) -60 dB, not -72: a long release frees its voice a sixth
+                                                         * sooner, under the reverb and the other voices */
 #else
         v->env -= mulq16(v->env, T_ESYNC(t)[2]);
-#endif
         if (v->env < (1 << 12)) {
+#endif
             v->env = 0;
             v->stage = 0;
             v->active = 0;
         }
         break;
-    case 4:                                             /* given up for another part: this block fades it */
-        v->env = 0;
-        v->stage = 0;
-        v->active = 0;
+    case 4:                                             /* given up (another part, the CPU): (Ozy's) it fades, -6 dB a
+                                                         * block, ~7 ms to -60 dB; one block was a click on a loud voice */
+        v->env -= v->env >> 1;
+        if (v->env < (1 << 14)) {
+            v->env = 0;
+            v->stage = 0;
+            v->active = 0;
+        }
         break;
     default:
         v->env = 0;

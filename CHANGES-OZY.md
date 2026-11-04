@@ -4,10 +4,35 @@ A modified version of [FMini-1](https://github.com/ruppert/fmini-1) by Guilherme
 this file is the notice of the modifications and their dates). Based on FMini-1 2.2.0 (2026-11-04, commit 54818a1).
 The version number stays FMini-1's (`FMINI_VERSION` in `firmware/src/core.h`), so the web editor keeps working with it.
 
-The two-core voices and the first look were installed and working on Ozy's FM-1 (2026-11-04). The CPU governor, the
-effects on the second core, the balance and the dark look (below, 2026-11-04, second round) have not been tested on an
-FM-1 yet.
+The two-core voices and the first look were installed and working on Ozy's FM-1 (2026-11-04). The effects on the second
+core, the balance and the dark look were installed on 2026-11-04 (the first governor tore more: see the later entry). The
+later changes have not been tested on an FM-1 yet.
 
+## 2026-11-04 (later): the governor made gentle, the voice render faster
+
+The first governor (below) made the tearing worse with DREAMER (preset 26) on an FM-1. Whenever more voices sounded
+than its cap, it cut one every half buffer with a fade of one block (0.7 ms): a click each time, over and over. Every
+half over 92 % cut one too. Now:
+
+- **The cap only limits new notes.** A note over the cap takes over the part's oldest released voice in place (no
+  fade). Voices already sounding are never cut for the cap.
+- **A voice is cut only when a half passes 95 %** (the deadline near), and the cut fades over ~7 ms (-6 dB a block),
+  not one block. The same gentler fade applies wherever a voice is given up (`voice.c env_tick` stage 4).
+- **The cost estimate leaves out TIMER5** (keys, USB) nested in the half, measures with 4 or more voices, rises a quarter
+  of the way a half (not half) and falls over ~0.1 s. The cap targets 82 % of a half (was 80 %).
+- **FMINI voices end at -60 dB of their release, not -72.** A long DECAY (the release time on FMINI) frees its voice
+  about a sixth sooner, under the reverb and the other voices.
+- **The ladder's loop is faster, with the same output bit for bit** (`eng_fmini.c fmini_render`).
+  - LP and HP each have their own loop (the HP sum and its three extra live values are gone from LP).
+  - The block's amplitude ramp is held in registers (`fmini_amp`), not re-read from memory after every store to `out[]`.
+  - The ten tanh table reads a sample come from a RAM copy of `TANH_Q15` (`fmini_th`, filled by `fmini_init`), not from
+    the flash through the cache both cores share.
+
+| File | Change |
+| --- | --- |
+| `firmware/src/audio.c` | `gov_half`: the cap for new notes only, sheds only over 95 %, the estimate without TIMER5 |
+| `firmware/src/voice.c` | `env_tick`: the release ends at -60 dB (FMINI), stage 4 fades over ~7 ms |
+| `firmware/src/eng_fmini.c` | `fmini_th`, `fmini_tanh`, `fmini_amp`; `fmini_render`'s loop split LP / HP |
 ## 2026-11-04: no tearing at full polyphony
 
 With the voices on both cores (next section), "Warning: CPU High" still showed at full polyphony and the audio still

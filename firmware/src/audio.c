@@ -44,21 +44,21 @@ static void audio_block(int32_t *out, uint32_t n)       /* mix (fx.c), then Q15 
 }
 
 /* (Ozy's FMini-1 Modded) The CPU governor: no half may run past its time, or the audio tears (the DMA plays a half
- * not written yet). Each half measures its render (TIMER5 nested in it included: the deadline sees both) and the
- * voices that sounded. A voice's share (the render less the idle part, over the voices) is followed fast up and
- * slowly down, measured with GOV_NMIN voices or more (with fewer, the second core gets none); the idle part with
- * none. The voice cap (voice.c vcap) is the voices that fit in GOV_TARGET of a half at that share: a new note over
- * it takes a voice (voice.c voice_alloc), and voices over it fade out one a half. A half over GOV_HOT takes its own
- * share at once and fades a voice. So a chord too big for the CPU loses its oldest notes instead of tearing.
- * Each fade keeps each part's lowest POLY note and MONO / LEGATO / UNISON lead, as the shared budget does.
- * "Warning: CPU High" (fmini_app.c) now shows only for a half that ran late: a tear the governor did not stop. */
+ * not written yet). Each half measures its render (less TIMER5 nested in it: the keys and USB, not the voices) and the
+ * voices that sounded. A voice's share (the render less the idle part, over the voices) is followed a quarter of the
+ * way up and slowly down, measured with GOV_NMIN voices or more; the idle part with none. The voice cap (voice.c
+ * vcap) is the voices that fit in GOV_TARGET of a half at that share. Only new notes see it: one over the cap takes
+ * over the part's oldest released voice in place, as at a full budget (no fade, no click); the voices already
+ * sounding are never cut for it. Only a half over GOV_HOT (the deadline near: everything nested counts) fades a
+ * voice (voice.c voice_kill: ~7 ms), the quietest released one first, never a part's bass or MONO lead, and takes
+ * its share at once. "Warning: CPU High" (fmini_app.c) shows only for a half that ran late: a real tear. */
 static volatile uint8_t shed_req;
 volatile uint32_t cpu_crit;                            /* halves that ran late: the FMINI pop-up "Warning: CPU High" (fmini_app.c) */
 static uint32_t shed_count;
 #define GOV_HALF ((HALF_FRAMES * 1000000u / FS) * FM1_TICKS_PER_US)   /* a half, TIMER4 ticks */
-#define GOV_TARGET (GOV_HALF * 80u / 100u)
-#define GOV_HOT (GOV_HALF * 92u / 100u)
-#define GOV_NMIN 3u
+#define GOV_TARGET (GOV_HALF * 82u / 100u)
+#define GOV_HOT (GOV_HALF * 95u / 100u)
+#define GOV_NMIN 4u
 static uint32_t gov_base = GOV_HALF / 8u;              /* ticks: a half's render with no voice (the buses, the master) */
 static uint32_t gov_voice = GOV_HALF / 24u;            /* ticks: a voice's share of a half (12 fit, until measured) */
 static uint32_t gov_hot;                               /* halves over GOV_HOT (console) */
@@ -74,29 +74,29 @@ static uint32_t gov_voices(void)                        /* voices that render (t
 
 static void gov_half(uint32_t all)
 {
-    uint32_t nv = gov_voices(), cap;
+    uint32_t nv = gov_voices(), own = all - (t5_nested_ticks < all ? t5_nested_ticks : all), cap;
     if (!nv) {
-        if (all > gov_base)
-            gov_base += (all - gov_base + 7u) / 8u;
+        if (own > gov_base)
+            gov_base += (own - gov_base + 7u) / 8u;
         else
-            gov_base -= (gov_base - all) / 8u;
+            gov_base -= (gov_base - own) / 8u;
     } else if (nv >= GOV_NMIN) {
-        uint32_t per = (all > gov_base ? all - gov_base : 0u) / nv;
+        uint32_t per = (own > gov_base ? own - gov_base : 0u) / nv;
         if (all > GOV_HOT && per > gov_voice)
             gov_voice = per;                           /* too close: what this half showed, at once */
         else if (per > gov_voice)
-            gov_voice += (per - gov_voice + 1u) / 2u;  /* up: fast */
+            gov_voice += (per - gov_voice + 3u) / 4u;  /* up: a quarter of the way a half */
         else
-            gov_voice -= (gov_voice - per) / 64u;      /* down: slow (~0.2 s) */
+            gov_voice -= (gov_voice - per) / 32u;      /* down: slower (~0.1 s) */
     }
     cap = gov_voice && GOV_TARGET > gov_base ? (GOV_TARGET - gov_base) / gov_voice : 0u;
     vcap = (uint8_t)(cap < VCAP_MIN ? VCAP_MIN : cap > NVOICE ? NVOICE : cap);
-    if (all > GOV_HOT)
-        gov_hot++;
     if (all > GOV_HALF)
         cpu_crit++;                                    /* past its time: a tear ("Warning: CPU High") */
-    if (all > GOV_HOT || voices_busy() > vcap)
-        shed_req = 1;                                  /* a voice fades over the next block */
+    if (all > GOV_HOT) {
+        gov_hot++;
+        shed_req = 1;                                  /* the deadline near: a voice fades (~7 ms) */
+    }
 }
 
 /* end of a half: all = its ticks, TIMER5 nested in it included -> the render alone in us (out of line: keeps the
