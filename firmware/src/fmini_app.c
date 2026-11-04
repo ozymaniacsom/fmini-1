@@ -5,7 +5,7 @@
  * ui_input / ui_leds / ui_draw, and fa_splash instead of draw_splash. The sound engine, the FX, MIDI, USB and the
  * storage are Felucca's.
  *
- * The screen is the approved panel (a 240 x 240 version of the 320 x 240 prototype): wood sides, the tabs
+ * The screen is the approved panel (a 240 x 240 version of the 320 x 240 prototype; Ozy's: dark, with glowing conduits for the wood sides), the tabs
  * CTRL OSC MIX FILT F.ENV A.ENV FX, four fluted knobs with a silver cap and a 0..10 scale, the sliding-box switches
  * (CTRL red, MIX blue, FX orange), the waveform boxes, the filter and contour graphs, the patch number and name
  * bottom left and "n/7" small bottom right.
@@ -19,14 +19,14 @@
  * Included by felucca.c before main.c. */
 #if FELUCCA_FMINI_ONLY
 #define FA_RGB(r, g, b) ((uint16_t)((((r) & 0xF8) << 8) | (((g) & 0xFC) << 3) | ((b) >> 3)))
-#define FA_OR FA_RGB(0xE0, 0x75, 0x2B)                   /* orange: values, curves, the active tab */
-#define FA_CR FA_RGB(0xEC, 0xE4, 0xD0)                   /* cream: labels */
-#define FA_MU FA_RGB(0x9A, 0x8F, 0x7E)                   /* muted */
-#define FA_RED FA_RGB(0xD6, 0x38, 0x2B)
-#define FA_BLUE FA_RGB(0x2F, 0x7F, 0xE0)
-#define FA_BOX FA_RGB(0x0F, 0x0E, 0x0D)
-#define FA_LINE FA_RGB(0x3A, 0x35, 0x30)
-#define FA_RULE FA_RGB(0x4A, 0x44, 0x3D)
+#define FA_OR FA_RGB(0x00, 0xFF, 0xC8)                   /* (Ozy) luminous teal: values, curves, the active tab */
+#define FA_CR FA_RGB(0xCF, 0xB4, 0xFF)                   /* (Ozy) ultraviolet: labels */
+#define FA_MU FA_RGB(0x6E, 0x5E, 0x96)                   /* (Ozy) dim violet: muted */
+#define FA_RED FA_RGB(0xFF, 0x1E, 0x6E)                  /* (Ozy) blood magenta */
+#define FA_BLUE FA_RGB(0x2E, 0x8C, 0xFF)
+#define FA_BOX FA_RGB(0x06, 0x04, 0x0C)
+#define FA_LINE FA_RGB(0x24, 0x1A, 0x3C)
+#define FA_RULE FA_RGB(0x3A, 0x2A, 0x5E)
 #define FA_NPAGE 7u
 
 static uint8_t fa_page;                                  /* 0..6 */
@@ -44,12 +44,12 @@ static uint16_t fa_mix(uint16_t a, uint16_t b, uint32_t t)   /* a + (b - a) * t 
              bl = ((a & 31u) * (256u - t) + (b & 31u) * t) >> 8;
     return (uint16_t)(r << 11 | g << 5 | bl);
 }
-static uint16_t fa_bg(int32_t y)                         /* the panel's vertical gradient #24211e -> #141211 */
+static uint16_t fa_bg(int32_t y)                         /* the panel's vertical gradient (Ozy: #140b26 -> #020104, near black) */
 {
-    return fa_mix(FA_RGB(0x24, 0x21, 0x1E), FA_RGB(0x14, 0x12, 0x11), (uint32_t)clamp(y, 0, 239) * 256u / 240u);
+    return fa_mix(FA_RGB(0x14, 0x0B, 0x26), FA_RGB(0x02, 0x01, 0x04), (uint32_t)clamp(y, 0, 239) * 256u / 240u);
 }
-static const uint16_t FA_SILVER[5] = {FA_RGB(0xF4, 0xF4, 0xF2), FA_RGB(0x8D, 0x8D, 0x8B), FA_RGB(0xE2, 0xE2, 0xDF),
-                                      FA_RGB(0x6E, 0x6E, 0x6C), FA_RGB(0xCF, 0xCF, 0xCC)};
+static const uint16_t FA_SILVER[5] = {FA_RGB(0xD8, 0xE6, 0xFF), FA_RGB(0x5A, 0x5F, 0x7A), FA_RGB(0xB8, 0xC4, 0xE8),
+                                      FA_RGB(0x3E, 0x42, 0x60), FA_RGB(0x9A, 0xA6, 0xD0)};
 static uint16_t fa_silver(uint32_t t)                    /* 0..255 along the gradient (stops .3 .55 .8) */
 {
     static const uint8_t ST[5] = {0, 77, 140, 204, 255};
@@ -93,16 +93,16 @@ static void fa_bake_knob(void)
             int32_t rs = 33 + wob;                                                 /* the skirt, in half pixels */
             uint16_t c = 0;
             if (sh2 <= (rs + 2) * (rs + 2))
-                c = FA_RGB(0x0B, 0x0A, 0x09);                                      /* the shadow */
+                c = FA_RGB(0x02, 0x01, 0x04);                                      /* the shadow */
             if (r2 <= rs * rs) {
                 int32_t hx = dx + 7, hy = dy + 13, d2 = hx * hx + hy * hy;          /* the highlight, up and left */
                 uint32_t t = (uint32_t)clamp(d2 * 256 / (50 * 50), 0, 255);
-                c = fa_mix(FA_RGB(0x3D, 0x39, 0x35), FA_RGB(0x0C, 0x0B, 0x0A), t);
+                c = fa_mix(FA_RGB(0x2C, 0x20, 0x4A), FA_RGB(0x03, 0x02, 0x06), t);
                 if (r2 > (rs - 2) * (rs - 2))
                     c = FA_RGB(0x04, 0x04, 0x04);                                   /* its black edge */
             }
             if (r2 <= 28 * 28)
-                c = r2 > 26 * 26 ? FA_RGB(0x2B, 0x28, 0x25) : FA_RGB(0x0D, 0x0C, 0x0B);   /* the plate and its rim */
+                c = r2 > 26 * 26 ? FA_RGB(0x1C, 0x14, 0x30) : FA_RGB(0x05, 0x03, 0x09);   /* the plate and its rim */
             if (r2 <= 20 * 20)
                 c = FA_RGB(0x08, 0x08, 0x08);                                       /* the black ring */
             if (r2 <= 19 * 19) {                                                    /* the silver cap */
@@ -228,7 +228,7 @@ static void fa_knob_col(uint32_t pg, uint32_t i, int32_t cx, int hot)
     a = (ratio < 0 ? 0 : ratio) * 270 / 1000 + 225;        /* the pointer: a dot between the cap and the skirt */
     {
         int32_t ai = a % 360 * 1024 / 360, px = cx + SINE[ai & 1023] * 12 / 32768, py = cy - SINE[(ai + 256) & 1023] * 12 / 32768;
-        cv_rect(px - 1, py - 1, 3, 3, FA_RGB(0xF6, 0xF1, 0xE3));
+        cv_rect(px - 1, py - 1, 3, 3, FA_RGB(0xE6, 0xFF, 0xF8));
     }
     fa_ctext(cx, 38 + dy + (pg == 1u && i < 3u ? 6 : 0), &AF_X, f->lb, lab);   /* OSC tab: OSC 1..3 labels 6 px lower */
     if (f->kind == FK_NAME && f->b == FN_RANGE) {
@@ -238,23 +238,23 @@ static void fa_knob_col(uint32_t pg, uint32_t i, int32_t cx, int hot)
     }
     fa_ctext(cx, 112 + dy, &AF_S, val, FA_OR);
     if (pg == 6u)                                          /* FX: the parameter each knob sets (the effect is the label above); no K1..K4 */
-        fa_ctext(cx, 127 + dy, &AF_X, i == 3u ? "GAIN" : "MIX", FA_RGB(0x5D, 0x55, 0x4A));
+        fa_ctext(cx, 127 + dy, &AF_X, i == 3u ? "GAIN" : "MIX", FA_RGB(0x5A, 0x48, 0x82));
 }
 
 static void fa_switch(uint32_t pg, uint32_t ex, int32_t cx, int hot)
 {
     const fmgf_t *f = fmg_field(pg, 4u + ex);
     int on = fmg_sw_on(f), x = cx - 15, y = pg == 0u ? 154 : pg == 2u ? 136 : 163;   /* CTRL: higher, no ON / OFF under it (VOICES below); MIXER: raised */
-    uint16_t col = pg == 0u ? FA_RED : pg == 2u ? FA_BLUE : on ? FA_OR : FA_RGB(0xD9, 0xD2, 0xC0);
+    uint16_t col = pg == 0u ? FA_RED : pg == 2u ? FA_BLUE : on ? FA_OR : FA_RGB(0xD8, 0xA0, 0x30);
     if (hot)
         cv_frame(x - 3, y - 3, 36, 20, FA_OR);
-    cv_rect(x, y, 31, 14, FA_RGB(0x4A, 0x44, 0x3D));
-    cv_rect(x + 1, y + 1, 29, 12, FA_RGB(0x0D, 0x0C, 0x0B));
+    cv_rect(x, y, 31, 14, FA_RGB(0x3A, 0x2A, 0x5E));
+    cv_rect(x + 1, y + 1, 29, 12, FA_RGB(0x05, 0x03, 0x09));
     cv_rect(on ? x + 15 : x + 2, y + 2, 14, 10, col);
     if (pg != 2u)                                          /* MIXER: the buttons have no name above them */
         fa_ctext(cx, pg == 0u ? 141 : 150, &AF_X, f->lb, hot ? FA_OR : FA_CR);
     if (pg == 2u)                                          /* MIXER: ON light, OFF dark */
-        fa_ctext(cx, y + 19, &AF_X, on ? "ON" : "OFF", on ? FA_CR : FA_RGB(0x4A, 0x44, 0x3D));
+        fa_ctext(cx, y + 19, &AF_X, on ? "ON" : "OFF", on ? FA_CR : FA_RGB(0x3A, 0x2A, 0x5E));
     else if (pg != 0u)
         fa_ctext(cx, 182, &AF_X, on ? "ON" : "OFF", on ? FA_OR : FA_MU);
 }
@@ -267,11 +267,11 @@ static void fa_lphp(int hot)
     fa_ctext(36, 139, &AF_X, "MODE", FA_CR);                        /* the switch's title, just above it */
     if (hot)
         cv_frame(x - 3, y - 3, w + 6, h + 6, FA_OR);
-    cv_rect(x, y, w, h, FA_RGB(0x4A, 0x44, 0x3D));
-    cv_rect(x + 1, y + 1, w - 2, h - 2, FA_RGB(0x0D, 0x0C, 0x0B));
+    cv_rect(x, y, w, h, FA_RGB(0x3A, 0x2A, 0x5E));
+    cv_rect(x + 1, y + 1, w - 2, h - 2, FA_RGB(0x05, 0x03, 0x09));
     cv_rect(on ? x + w / 2 : x + 2, y + 2, w / 2 - 2, h - 4, FA_RED);     /* the thumb is always red */
-    fa_rtext(x - 4, ty, &AF_X, "LP", on ? FA_RGB(0x4A, 0x44, 0x3D) : FA_CR);     /* the chosen word light, the other dark, as MIX's ON / OFF */
-    fa_ltext(x + w + 4, ty, &AF_X, "HP", on ? FA_CR : FA_RGB(0x4A, 0x44, 0x3D));
+    fa_rtext(x - 4, ty, &AF_X, "LP", on ? FA_RGB(0x3A, 0x2A, 0x5E) : FA_CR);     /* the chosen word light, the other dark, as MIX's ON / OFF */
+    fa_ltext(x + w + 4, ty, &AF_X, "HP", on ? FA_CR : FA_RGB(0x3A, 0x2A, 0x5E));
 }
 /* FILT: FILT. MOD under the LP / HP button: the MOD FLT switch of CTRL (the filter follows the modulation), its name above */
 static void fa_filtmod(int hot)
@@ -282,10 +282,10 @@ static void fa_filtmod(int hot)
     fa_ctext(36, 169, &AF_X, f->lb, hot ? FA_OR : FA_CR);      /* its name just above, as MODE is above LP / HP */
     if (hot)
         cv_frame(x - 3, y - 3, w + 6, h + 6, FA_OR);
-    cv_rect(x, y, w, h, FA_RGB(0x4A, 0x44, 0x3D));
-    cv_rect(x + 1, y + 1, w - 2, h - 2, FA_RGB(0x0D, 0x0C, 0x0B));
+    cv_rect(x, y, w, h, FA_RGB(0x3A, 0x2A, 0x5E));
+    cv_rect(x + 1, y + 1, w - 2, h - 2, FA_RGB(0x05, 0x03, 0x09));
     cv_rect(on ? x + w / 2 : x + 2, y + 2, w / 2 - 2, h - 4, FA_RED);
-    fa_ltext(x + w + 4, y + (h - fa_cap_h(&AF_X)) / 2, &AF_X, on ? "ON" : "OFF", on ? FA_CR : FA_RGB(0x4A, 0x44, 0x3D));   /* the state, right of the box, as MIX's ON / OFF */
+    fa_ltext(x + w + 4, y + (h - fa_cap_h(&AF_X)) / 2, &AF_X, on ? "ON" : "OFF", on ? FA_CR : FA_RGB(0x3A, 0x2A, 0x5E));   /* the state, right of the box, as MIX's ON / OFF */
 }
 
 /* MIXER: the noise colour, a button under NOISE: ON = PINK, OFF = WHITE, the text always in the ON colour */
@@ -295,8 +295,8 @@ static void fa_noise_btn(int32_t cx, int hot)
     int on = fmg_sw_on(f), x = cx - 15, y = 170;
     if (hot)
         cv_frame(x - 3, y - 3, 36, 20, FA_OR);
-    cv_rect(x, y, 31, 14, FA_RGB(0x4A, 0x44, 0x3D));
-    cv_rect(x + 1, y + 1, 29, 12, FA_RGB(0x0D, 0x0C, 0x0B));
+    cv_rect(x, y, 31, 14, FA_RGB(0x3A, 0x2A, 0x5E));
+    cv_rect(x + 1, y + 1, 29, 12, FA_RGB(0x05, 0x03, 0x09));
     cv_rect(on ? x + 15 : x + 2, y + 2, 14, 10, FA_BLUE);
     fa_ctext(cx, y + 19, &AF_X, on ? "PINK" : "WHITE", FA_CR);
 }
@@ -306,7 +306,7 @@ static void fa_voices(int hot)
 {
     int poly = TSEL->p[P_VOICE] == V_POLY;
     int32_t x = 60, y = 184, ty = y + 1 + (13 - AF_X_CAP_H) / 2 - AF_X_CAP_Y;   /* the cap height centred in the 13 rows */
-    const uint16_t dk = FA_RGB(0x0D, 0x0C, 0x0B), ink = FA_RGB(0x1A, 0x0F, 0x06), bg = FA_RGB(0xD9, 0xD2, 0xC0);   /* beige */
+    const uint16_t dk = FA_RGB(0x05, 0x03, 0x09), ink = FA_RGB(0x08, 0x04, 0x10), bg = FA_RGB(0xD8, 0xA0, 0x30);   /* (Ozy) dark gold */
     if (hot)
         cv_frame(x - 2, y - 2, 124, 19, bg);                 /* the cursor: a second beige border */
     cv_rect(x, y, 120, 15, bg);
@@ -394,7 +394,7 @@ static void fa_knob_mini(uint32_t pg, uint32_t i, int32_t cx, int32_t cy, int ho
     a = (ratio < 0 ? 0 : ratio) * 270 / 1000 + 225;
     {
         int32_t ai = a % 360 * 1024 / 360, px = cx + SINE[ai & 1023] * 12 / 32768, py = cy - SINE[(ai + 256) & 1023] * 12 / 32768;
-        cv_rect(px - 1, py - 1, 3, 3, FA_RGB(0xF6, 0xF1, 0xE3));
+        cv_rect(px - 1, py - 1, 3, 3, FA_RGB(0xE6, 0xFF, 0xF8));
     }
     fa_ctext(cx, 138, &AF_X, lb, hot ? FA_OR : FA_CR);
     if (f->kind != FK_NAME && (f->kind != FK_GLB || GP[f->a].fmt == F_PCT))
@@ -474,8 +474,8 @@ static void fa_fader(uint32_t pg, uint32_t i, int32_t cx, int hot)
     cv_rect(x, y, 44, 7, FA_LINE);
     cv_rect(x + 1, y + 1, 42, 5, FA_BOX);
     cv_rect(x + 1, y + 1, fw, 5, FA_OR);
-    cv_rect(x + 1 + fw - (fw > 1 ? 1 : 0), y - 1, 2, 9, FA_RGB(0xF6, 0xF1, 0xE3));     /* the cap */
-    fa_tiny_text(cx, 152, lb, hot ? FA_OR : FA_RGB(0xA6, 0x9C, 0x88));
+    cv_rect(x + 1 + fw - (fw > 1 ? 1 : 0), y - 1, 2, 9, FA_RGB(0xE6, 0xFF, 0xF8));     /* the cap */
+    fa_tiny_text(cx, 152, lb, hot ? FA_OR : FA_RGB(0x9C, 0x86, 0xC8));
     if (f->kind != FK_NAME && (f->kind != FK_GLB || GP[f->a].fmt == F_PCT))
         fa_val(val, ratio, f);
     else if (f->a == G_CRATE)                              /* RATE in Hz */
@@ -503,7 +503,7 @@ static void fa_pop_knob(uint32_t pg, uint32_t i, int32_t cx, int32_t cy, int hot
     a = (ratio < 0 ? 0 : ratio) * 270 / 1000 + 225;
     {
         int32_t ai = a % 360 * 1024 / 360, px = cx + SINE[ai & 1023] * 12 / 32768, py = cy - SINE[(ai + 256) & 1023] * 12 / 32768;
-        cv_rect(px - 1, py - 1, 3, 3, FA_RGB(0xF6, 0xF1, 0xE3));
+        cv_rect(px - 1, py - 1, 3, 3, FA_RGB(0xE6, 0xFF, 0xF8));
     }
     fa_ctext(cx, cy - 42, &AF_X, f->lb, hot ? FA_OR : FA_CR);
     if (f->kind == FK_PAR || (f->kind == FK_GLB && GP[f->a].fmt == F_PCT))
@@ -513,7 +513,7 @@ static void fa_pop_knob(uint32_t pg, uint32_t i, int32_t cx, int32_t cy, int hot
 static void fa_fx_dialog(void)
 {
     uint32_t pg = 6u + fmg_fx, i;
-    const uint16_t bgd = FA_RGB(0x1B, 0x19, 0x17);
+    const uint16_t bgd = FA_RGB(0x0C, 0x07, 0x16);
     cv_rect(12, 42, 216, 164, FA_OR);
     cv_rect(14, 44, 212, 160, bgd);
     fa_ctext(120, 50, &AF_S, FMG_PAGE[pg].name, FA_CR);
@@ -627,7 +627,7 @@ static void fa_dialog(void)
 {
     uint32_t k = fa_sv_slot, i;
     char l[4];
-    const uint16_t bgd = FA_RGB(0x1B, 0x19, 0x17);
+    const uint16_t bgd = FA_RGB(0x0C, 0x07, 0x16);
     cv_rect(10, 26, 220, 188, FA_OR);
     cv_rect(12, 28, 216, 184, bgd);
     fa_slot_num(l, k);
@@ -654,7 +654,7 @@ static void fa_dialog(void)
  * goes back to the name */
 static void fa_confirm_dialog(void)
 {
-    const uint16_t bgd = FA_RGB(0x1B, 0x19, 0x17);
+    const uint16_t bgd = FA_RGB(0x0C, 0x07, 0x16);
     char l[4], nm[24];
     uint32_t i;
     static const int32_t BX[2] = {34, 126};              /* NO, YES: the boxes */
@@ -681,7 +681,7 @@ static void fa_confirm_dialog(void)
  * (then the progress), SAVE on NO or a page button refuses */
 static void fa_restore_dialog(void)
 {
-    const uint16_t bgd = FA_RGB(0x1B, 0x19, 0x17);
+    const uint16_t bgd = FA_RGB(0x0C, 0x07, 0x16);
     static const int32_t BX[2] = {34, 126};              /* NO, YES: the boxes */
     static const char *const BL[2] = {"NO", "YES"};
     uint32_t i;
@@ -742,14 +742,14 @@ static void fa_ar_turn(uint32_t row, int32_t s)
 static void fa_frame(const char *title)
 {
     cv_rect(10, 24, 220, 186, FA_OR);
-    cv_rect(12, 26, 216, 182, FA_RGB(0x1B, 0x19, 0x17));
+    cv_rect(12, 26, 216, 182, FA_RGB(0x0C, 0x07, 0x16));
     fa_ctext(120, 36, &AF_M, title, FA_CR);
 }
 /* a line of a pop-up: the label on the left, the value on the right, the highlight under the chosen one */
 static void fa_line(int32_t y, const char *lb, const char *val, int hot)
 {
     if (hot)
-        cv_rect(16, y - 5, 208, 21, FA_RGB(0x2E, 0x28, 0x22));
+        cv_rect(16, y - 5, 208, 21, FA_RGB(0x26, 0x12, 0x3E));
     fa_ltext(22, y, &AF_M, lb, hot ? FA_OR : FA_CR);
     fa_rtext(218, y, &AF_M, val, hot ? FA_OR : FA_CR);
 }
@@ -855,7 +855,7 @@ static void fa_tp_draw(void)
 {
     char b[8];
     cv_rect(26, 60, 188, 112, FA_OR);
-    cv_rect(28, 62, 184, 108, FA_RGB(0x1B, 0x19, 0x17));
+    cv_rect(28, 62, 184, 108, FA_RGB(0x0C, 0x07, 0x16));
     fmt_int(b, song.g[G_BPM]);
     fa_ctext(120, 70, &AF_L, b, FA_OR);
     fa_ctext(120, 108, &AF_S, "BPM", FA_MU);
@@ -961,7 +961,7 @@ static void fa_seq_dialog(void)
 {
     const track_t *t = TSEL;
     uint32_t i, len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), now = song.playing ? t->seq_idx % len : 99u;
-    const uint16_t bg = FA_RGB(0x1B, 0x19, 0x17);
+    const uint16_t bg = FA_RGB(0x0C, 0x07, 0x16);
     char b[16];
     uint32_t notes = 0;
     cv_rect(10, 0, 220, 240, FA_OR);
@@ -970,7 +970,7 @@ static void fa_seq_dialog(void)
         notes |= t->step[i].n;
     for (i = 0; i < NSTEP; i++) {
         int32_t x = 31 + (int32_t)(i % 8u) * SQ_PITCH, y = 10 + (int32_t)(i / 8u) * SQ_PITCH;
-        uint16_t c = FA_RGB(0x2A, 0x25, 0x20);            /* empty */
+        uint16_t c = FA_RGB(0x1A, 0x10, 0x2C);            /* empty */
         if (i == now)
             c = FA_OR;
         else if (i < len && t->step[i].n)
@@ -978,7 +978,7 @@ static void fa_seq_dialog(void)
         else if (fa_sq_rec && i == fa_sq_cur && fa_sq_blink())
             c = FA_CR;                                    /* the next slot of the take */
         else if (i < len && (notes || fa_sq_cur))
-            c = FA_RGB(0x5A, 0x22, 0x1C);                 /* a rest of the take (SELECT, 1.22.0): a dark red */
+            c = FA_RGB(0x5A, 0x10, 0x30);                 /* a rest of the take (SELECT, 1.22.0): a dark red */
         cv_rrect(x, y, SQ_SIZE, SQ_SIZE, 4, c, bg);
     }
     str_cpy(b, fa_sq_rec ? "REC" : song.playing ? "PLAY" : "STOP", 5);
@@ -1303,7 +1303,7 @@ static void fa_gl_dialog(void)
             else
                 str_cpy(cc, "OFF", 4);
             if (hot)
-                cv_rect(16, y - 4, 204, 20, FA_RGB(0x2E, 0x28, 0x22));
+                cv_rect(16, y - 4, 204, 20, FA_RGB(0x26, 0x12, 0x3E));
             fa_ltext(20, y + 3, &AF_X, tag, FA_MU);
             fa_ltext(54, y, &AF_M, nm, hot ? FA_OR : FA_CR);
             fa_rtext(214, y, &AF_M, cc, hot ? FA_OR : FA_CR);
@@ -1314,7 +1314,7 @@ static void fa_gl_dialog(void)
             if (thumb < 12)
                 thumb = 12;
             at = (FA_NCC > 6u) ? (int32_t)top * (th - thumb) / (int32_t)(FA_NCC - 6u) : 0;
-            cv_rect(223, ty, 3, th, FA_RGB(0x2A, 0x25, 0x20));
+            cv_rect(223, ty, 3, th, FA_RGB(0x1A, 0x10, 0x2C));
             cv_rect(223, ty + at, 3, thumb, FA_CR);
         }
         fa_ctext(120, 190, &AF_S, "MIDI LEARN: SEND A CC   ALGO = CC", FA_OR);
@@ -1342,7 +1342,7 @@ static void fa_pp_draw(void)
     if (text_w(&AF_L, nm) > 204)
         f = &AF_M;
     cv_rect(12, 70, 216, 100, FA_OR);
-    cv_rect(14, 72, 212, 96, FA_RGB(0x1B, 0x19, 0x17));
+    cv_rect(14, 72, 212, 96, FA_RGB(0x0C, 0x07, 0x16));
     fa_ctext(120, 84, &AF_L, num, FA_OR);
     fa_ctext(120, 126, f, nm, FA_CR);
 }
@@ -1363,8 +1363,13 @@ static void fa_cpu_watch(void)
 static void fa_cpu_draw(void)
 {
     cv_rect(20, 96, 200, 26, FA_OR);
-    cv_rect(22, 98, 196, 22, FA_RGB(0x1B, 0x19, 0x17));
-    fa_ctext(120, 102, &AF_M, "Warning: CPU High", FA_OR);
+    cv_rect(22, 98, 196, 22, FA_RGB(0x0C, 0x07, 0x16));
+#if FELUCCA_CPU2
+    if (!C1_ON())                                         /* (Ozy's) one core: MENU > SYSTEM > 2ND CORE is OFF, or it gave up */
+        fa_ctext(120, 102, &AF_M, "CPU High: 1 CORE", FA_OR);
+    else
+#endif
+        fa_ctext(120, 102, &AF_M, "Warning: CPU High", FA_OR);
 }
 /* every frame: a new preset (PRESETS, a Program Change, a saved one loaded) is shown in the pop-up; 1 = it changed now
  * (the screen stays where it is) */
@@ -1410,7 +1415,7 @@ static uint32_t fa_batt(void)
 static void fa_battery(int32_t xr, int32_t y)
 {
     uint32_t st = fa_batt(), bars = st & 7u, i;
-    uint16_t bg = fa_bg(y + 4), ink = st & 8u ? FA_RED : FA_RGB(0xD9, 0xD2, 0xC0), lit = st & 8u ? FA_RED : FA_CR;
+    uint16_t bg = fa_bg(y + 4), ink = st & 8u ? FA_RED : FA_RGB(0xD8, 0xA0, 0x30), lit = st & 8u ? FA_RED : FA_CR;
     int32_t x = xr - 25;
     cv_rect(x, y, 23, 10, ink);                              /* the outline: a 23 x 10 body and a 2 x 4 nub */
     cv_rect(x + 1, y + 1, 21, 8, bg);
@@ -1420,7 +1425,7 @@ static void fa_battery(int32_t xr, int32_t y)
     if (st & 16u) {                                          /* the bolt over the bars: rows of {y, x0, x1} in the body, a dark edge, then an orange core */
         static const uint8_t R[7][3] = {{1, 12, 13}, {2, 11, 12}, {3, 10, 11}, {4, 9, 12}, {5, 10, 11}, {6, 9, 10}, {7, 8, 9}};
         for (i = 0; i < 7u; i++)
-            cv_rect(x + (int32_t)R[i][1] - 1, y + (int32_t)R[i][0], (int32_t)(R[i][2] - R[i][1]) + 3, 1, FA_RGB(0x0E, 0x0D, 0x0C));
+            cv_rect(x + (int32_t)R[i][1] - 1, y + (int32_t)R[i][0], (int32_t)(R[i][2] - R[i][1]) + 3, 1, FA_RGB(0x06, 0x03, 0x0C));
         for (i = 0; i < 7u; i++)
             cv_rect(x + (int32_t)R[i][1], y + (int32_t)R[i][0], (int32_t)(R[i][2] - R[i][1]) + 1, 1, FA_OR);
     }
@@ -1438,44 +1443,50 @@ static void fa_scene(void)
     cv_rect(8, 0, 224, 240, fa_bg(0));                       /* the panel: the gradient in 20 bands */
     for (i = 0; i < 20u; i++)
         cv_rect(8, (int32_t)i * 12, 224, 12, fa_bg((int32_t)i * 12 + 6));
-    for (x = 0; x < 8; x++) {                                /* the wood sides: a horizontal gradient and the grain */
-        uint16_t w = x < 4 ? fa_mix(FA_RGB(0x4E, 0x2B, 0x14), FA_RGB(0x8A, 0x54, 0x30), (uint32_t)x * 64u)
-                           : fa_mix(FA_RGB(0x8A, 0x54, 0x30), FA_RGB(0x5C, 0x33, 0x19), (uint32_t)(x - 4) * 64u);
-        cv_rect(x, 0, 1, 240, w);
-        cv_rect(232 + x, 0, 1, 240, w);
+    cv_rect(0, 0, 8, 240, FA_RGB(0x04, 0x02, 0x08));         /* (Ozy) the sides: dark conduits, not wood */
+    cv_rect(232, 0, 8, 240, FA_RGB(0x04, 0x02, 0x08));
+    for (i = 0; i < 240u; i += 4u) {                          /* .. a glowing vein down each: teal, ultraviolet, magenta */
+        static const uint16_t VEIN[3] = {FA_RGB(0x00, 0xFF, 0xC8), FA_RGB(0x8A, 0x3C, 0xFF), FA_RGB(0xFF, 0x1E, 0x8C)};
+        uint32_t k = i * 3u / 240u, f = (i * 3u % 240u) * 256u / 240u;
+        uint16_t c = fa_mix(VEIN[k % 3u], VEIN[(k + 1u) % 3u], f), h = fa_mix(c, FA_RGB(0x04, 0x02, 0x08), 170u);
+        cv_rect(3, (int32_t)i, 2, 4, c);
+        cv_rect(2, (int32_t)i, 1, 4, h);
+        cv_rect(5, (int32_t)i, 1, 4, h);
+        cv_rect(235, (int32_t)i, 2, 4, c);
+        cv_rect(234, (int32_t)i, 1, 4, h);
+        cv_rect(237, (int32_t)i, 1, 4, h);
     }
-    for (i = 1; i < 240u; i += 7u) {
-        cv_rect(0, (int32_t)i, 8, 1, FA_RGB(0x3A, 0x1C, 0x0B));
-        cv_rect(232, (int32_t)i, 8, 1, FA_RGB(0x3A, 0x1C, 0x0B));
-        cv_rect(0, (int32_t)i + 3, 8, 1, FA_RGB(0x42, 0x20, 0x0D));
-        cv_rect(232, (int32_t)i + 3, 8, 1, FA_RGB(0x42, 0x20, 0x0D));
+    for (i = 6; i < 240u; i += 24u) {                         /* .. and its nodes */
+        cv_rect(1, (int32_t)i, 6, 2, FA_RGB(0x2A, 0x1E, 0x44));
+        cv_rect(233, (int32_t)i + 12, 6, 2, FA_RGB(0x2A, 0x1E, 0x44));
     }
-    cv_rect(8, 0, 224, 22, FA_RGB(0x0E, 0x0D, 0x0C));        /* the header: the name and the seven tabs */
-    {                                                    /* the logo as on the splash: FM and 1 orange, ini- cream */
+    (void)x;
+    cv_rect(8, 0, 224, 22, FA_RGB(0x06, 0x03, 0x0C));        /* the header: the name and the seven tabs */
+    {                                                    /* the logo: FM and 1 teal, ini- ultraviolet (Ozy) */
         int32_t lx = 12;
-        cv_text_on(lx, 3, &AF_S, "FM", FA_OR, FA_RGB(0x0E, 0x0D, 0x0C));
+        cv_text_on(lx, 3, &AF_S, "FM", FA_OR, FA_RGB(0x06, 0x03, 0x0C));
         lx += text_w(&AF_S, "FM");
-        cv_text_on(lx, 3, &AF_S, "ini-", FA_CR, FA_RGB(0x0E, 0x0D, 0x0C));
+        cv_text_on(lx, 3, &AF_S, "ini-", FA_CR, FA_RGB(0x06, 0x03, 0x0C));
         lx += text_w(&AF_S, "ini-");
-        cv_text_on(lx, 3, &AF_S, "1", FA_OR, FA_RGB(0x0E, 0x0D, 0x0C));
+        cv_text_on(lx, 3, &AF_S, "1", FA_OR, FA_RGB(0x06, 0x03, 0x0C));
     }
     {
         static const uint8_t TW[FA_NPAGE] = {24, 22, 20, 22, 30, 30, 18};
         int32_t tx = 60;
         for (i = 0; i < FA_NPAGE; i++) {
-            uint16_t bgc = i == pg ? FA_OR : FA_RGB(0x1E, 0x1B, 0x19);
+            uint16_t bgc = i == pg ? FA_OR : FA_RGB(0x12, 0x0B, 0x22);
             cv_rect(tx, 2, TW[i] - 1, 18, bgc);
             cv_text_on(tx + (TW[i] - 1) / 2 - text_w(&AF_X, FA_TAB[i]) / 2, 11 - AF_X_CAP_Y - AF_X_CAP_H / 2 + 1, &AF_X,
-                       FA_TAB[i], i == pg ? FA_RGB(0x1A, 0x0F, 0x06) : FA_MU, bgc);
+                       FA_TAB[i], i == pg ? FA_RGB(0x08, 0x04, 0x10) : FA_MU, bgc);
             tx += TW[i];
         }
     }
     cv_rect(14, 30, 212, 1, FA_RULE);                         /* the section title on its rule */
     {
         int32_t w = text_w(&AF_S, FMG_PAGE[pg].name) + 14;
-        cv_rect(120 - w / 2, 24, w, 13, FA_RGB(0x1B, 0x19, 0x17));
+        cv_rect(120 - w / 2, 24, w, 13, FA_RGB(0x0C, 0x07, 0x16));
         cv_text_on(120 - text_w(&AF_S, FMG_PAGE[pg].name) / 2, 24 - AF_S_CAP_Y + 2, &AF_S, FMG_PAGE[pg].name, FA_CR,
-                   FA_RGB(0x1B, 0x19, 0x17));
+                   FA_RGB(0x0C, 0x07, 0x16));
     }
     for (i = 0; i < 4u; i++)
         fa_knob_col(pg, i, 36 + (int32_t)i * 56, cur == i);
@@ -1523,7 +1534,7 @@ static void fa_scene(void)
     else if (fa_msg_on()) {
         int32_t mw = text_w(&AF_M, fa_msg) + 20;
         cv_rect(120 - mw / 2, 96, mw, 26, FA_OR);
-        cv_rect(120 - mw / 2 + 2, 98, mw - 4, 22, FA_RGB(0x1B, 0x19, 0x17));
+        cv_rect(120 - mw / 2 + 2, 98, mw - 4, 22, FA_RGB(0x0C, 0x07, 0x16));
         fa_ctext(120, 102, &AF_M, fa_msg, FA_OR);
     }
     if (fb_rs_state() == FB_RS_ASK || fb_rs == FB_RS_OK)
@@ -1586,7 +1597,7 @@ static void fa_cat(char *d, const char *s)
 static void fa_diag(void)
 {
     char b[40], t[16];
-    const uint16_t bgd = FA_RGB(0x1B, 0x19, 0x17);
+    const uint16_t bgd = FA_RGB(0x0C, 0x07, 0x16);
     cv_rect(6, 14, 228, 212, FA_OR);
     cv_rect(8, 16, 224, 208, bgd);
     fa_pc_text(120, 24, &AF_M, "BEND - DIAGNOSTICO", FA_CR, bgd);
@@ -1627,7 +1638,7 @@ static void fa_draw(void)
         return;
     }
     for (band = 0; band < 2u; band++) {
-        cv_begin(240, 120, FA_RGB(0x17, 0x15, 0x13));
+        cv_begin(240, 120, FA_RGB(0x0A, 0x06, 0x14));
         cv_oy = -(int32_t)band * 120;
         cv_cy0 = 0;
         fa_scene();

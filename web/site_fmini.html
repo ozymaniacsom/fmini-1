@@ -1,17 +1,17 @@
 <!doctype html>
 <!-- SPDX-License-Identifier: GPL-3.0-only
-     FMini-1 site + installer. The installer logic is the Felucca installer's (Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments) -->
+     Ozy's FMini-1 Modded site + installer: a fork of the FMini-1 site by Guilherme Ruppert (github.com/ruppert/fmini-1). The installer logic is the Felucca installer's (Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments) -->
 <html lang="pt">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta name="description" content="FMini-1: a Minimoog emulation firmware for the M-Vave FM-1, mono and polyphonic. Analog Circuit Modelling, 3 oscillators, ladder filter, 200 presets, arpeggiator, sequencer, MIDI.">
-<title>FMini-1 — a Minimoog emulation for the M-Vave FM-1</title>
+<meta name="description" content="Ozy's FMini-1 Modded, a fork of FMini-1: a Minimoog emulation firmware for the M-Vave FM-1, mono and polyphonic. Analog Circuit Modelling, 3 oscillators, ladder filter, 200 presets, arpeggiator, sequencer, MIDI.">
+<title>Ozy's FMini-1 Modded — a Minimoog emulation for the M-Vave FM-1</title>
 <style>
   :root {
-    --bg: #0d0c10; --surface: #15131a; --surface2: #1c1922; --line: #2a2631; --fg: #f4f0ea; --dim: #a29cab; --mute: #6f6a78;
-    --or: #ff7a1a; --or2: #ff9a4d; --ok: #7bd88f; --bad: #ff7a6a;
+    --bg: #030207; --surface: #0c0716; --surface2: #140b24; --line: #2a1e44; --fg: #e8fff8; --dim: #b49be8; --mute: #6e5e96;
+    --or: #00ffc8; --or2: #ff1e6e; --ok: #be96ff; --bad: #ff1e6e;
     --sans: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
@@ -22,17 +22,17 @@
   img { max-width: 100%; }
   .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
 
-  .announce { background: var(--or); color: #1a0e05; text-align: center; font-size: 13.5px; font-weight: 600; padding: 9px 16px; }
-  .announce .ver { display: inline-block; font: 700 12px/1 var(--mono); background: #1a0e05; color: var(--or2); border-radius: 4px; padding: 3px 6px; margin-left: 6px; }
+  .announce { background: var(--or); color: #030207; text-align: center; font-size: 13.5px; font-weight: 600; padding: 9px 16px; }
+  .announce .ver { display: inline-block; font: 700 12px/1 var(--mono); background: #030207; color: var(--or2); border-radius: 4px; padding: 3px 6px; margin-left: 6px; }
 
-  header.nav { position: sticky; top: 0; z-index: 20; background: rgba(13,12,16,.86); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+  header.nav { position: sticky; top: 0; z-index: 20; background: rgba(10,1,20,.86); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
   header.nav .wrap { display: flex; align-items: center; gap: 18px; height: 60px; }
   .brand { font-weight: 900; font-style: italic; letter-spacing: -.04em; font-size: 23px; color: var(--fg); text-decoration: none; }
   .brand i { color: var(--or); }
   header.nav nav { display: flex; gap: 2px; margin-left: auto; }
   header.nav nav a { color: var(--dim); text-decoration: none; font-size: 14px; font-weight: 500; padding: 8px 12px; border-radius: 8px; }
   header.nav nav a:hover { color: var(--fg); background: var(--surface2); }
-  header.nav nav a.keep { color: #1a0e05; background: var(--or); font-weight: 700; margin-left: 6px; }
+  header.nav nav a.keep { color: #030207; background: var(--or); font-weight: 700; margin-left: 6px; }
   header.nav nav a.keep:hover { background: var(--or2); }
   .lang { font: 600 12px/1 var(--mono); color: var(--dim); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; cursor: pointer; }
   .lang:hover { color: var(--fg); border-color: var(--mute); }
@@ -49,10 +49,10 @@
   @media (max-width: 430px) { header.nav nav a.try .tl { display: none; } header.nav nav a.try .ts { display: inline; } }
   .tipbg { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
   .tipbg[hidden] { display: none; }
-  .tipbox { background: var(--surface2, #1b1917); border: 1px solid var(--line); border-radius: 14px; padding: 22px; max-width: 380px; color: var(--fg); }
+  .tipbox { background: var(--surface2, #1e052e); border: 1px solid var(--line); border-radius: 14px; padding: 22px; max-width: 380px; color: var(--fg); }
   .tipbox h3 { margin: 0 0 8px; font-size: 18px; }
   .tipbox p { margin: 0 0 16px; color: var(--dim); line-height: 1.45; }
-  .tipgo { display: inline-block; background: var(--or); color: #1a0e05; font-weight: 700; text-decoration: none; padding: 10px 16px; border-radius: 10px; margin-right: 8px; }
+  .tipgo { display: inline-block; background: var(--or); color: #030207; font-weight: 700; text-decoration: none; padding: 10px 16px; border-radius: 10px; margin-right: 8px; }
   .tipx { background: none; border: 1px solid var(--line); color: var(--dim); padding: 10px 14px; border-radius: 10px; cursor: pointer; font: inherit; }
 
   /* hero */
@@ -65,7 +65,7 @@
   .sub { margin: 16px 0 0; max-width: 640px; color: var(--dim); }
   .cta { display: flex; flex-wrap: wrap; gap: 12px; margin: 32px 0 0; }
   .btn { display: inline-block; text-decoration: none; font: 700 15px/1 var(--sans); border-radius: 10px; padding: 16px 24px; cursor: pointer; border: 0; }
-  .btn.pri { color: #1a0e05; background: var(--or); }
+  .btn.pri { color: #030207; background: var(--or); }
   .btn.pri:hover { background: var(--or2); }
   .btn.sec2 { color: var(--fg); background: var(--surface2); border: 1px solid var(--line); }
   .btn.sec2:hover { border-color: var(--mute); }
@@ -80,7 +80,7 @@
   .stage { position: relative; height: 100%; overflow: hidden; }
   .copy1 { position: absolute; z-index: 3; left: max(24px, calc((100% - 1032px) / 2)); top: 50%; transform: translateY(-50%); width: min(500px, 46%); will-change: opacity, transform; }
   .kick { margin: 0 0 18px; font: 500 13px/1.4 var(--mono); color: var(--dim); }
-  .kick .ver { display: inline-block; margin-left: 8px; font: 700 11.5px/1 var(--mono); background: var(--or); color: #1a0e05; border-radius: 4px; padding: 4px 6px; }
+  .kick .ver { display: inline-block; margin-left: 8px; font: 700 11.5px/1 var(--mono); background: var(--or); color: #030207; border-radius: 4px; padding: 4px 6px; }
   .copy1 .logo { font-size: clamp(56px, 8.4vw, 118px); }
   .copy1 .tag { font-size: clamp(20px, 2.4vw, 28px); margin-top: 22px; }
   .copy1 .sub { font-size: 16px; }
@@ -91,7 +91,7 @@
   .fm { position: absolute; z-index: 1; margin: 0; left: 0; top: 0; opacity: 0; will-change: transform, opacity; }
   .fm .body { display: block; width: 100%; height: auto; filter: drop-shadow(0 30px 50px rgba(0,0,0,.6)); }
   .fm .lcd { position: absolute; left: 30.73%; top: 15.23%; width: 16.76%; height: 28.3%; background: #000; overflow: hidden; border-radius: 1.5%; opacity: 0;
-             box-shadow: 0 0 18px rgba(255,122,26,.18); cursor: pointer; }
+             box-shadow: 0 0 18px rgba(0,255,200,.35); cursor: pointer; }
   .fm .lcd #scr { position: absolute; inset: 0; }
   .fm .lcd img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; transition: opacity .6s ease; }
   .copy2 { position: absolute; z-index: 3; left: 0; right: 0; text-align: center; opacity: 0; pointer-events: none; padding: 0 24px; }
@@ -129,12 +129,12 @@
   /* screens */
   .viewer { display: grid; grid-template-columns: minmax(240px, 340px) 1fr; gap: 56px; align-items: center; margin-top: 48px; }
   @media (max-width: 820px) { .viewer { grid-template-columns: 1fr; gap: 28px; } }
-  .glass { background: #000; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); aspect-ratio: 1; box-shadow: 0 30px 80px rgba(255,122,26,.07); }
+  .glass { background: #000; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); aspect-ratio: 1; box-shadow: 0 30px 80px rgba(138,60,255,.18); }
   .glass img { display: block; width: 100%; height: 100%; object-fit: contain; }
   .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 22px; }
   .tabs button { font: 600 12.5px/1 var(--mono); color: var(--dim); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 9px 13px; cursor: pointer; }
   .tabs button:hover { color: var(--fg); border-color: var(--mute); }
-  .tabs button[aria-selected=true] { color: #1a0e05; background: var(--or); border-color: var(--or); }
+  .tabs button[aria-selected=true] { color: #030207; background: var(--or); border-color: var(--or); }
   .viewer h3 { margin: 0 0 10px; font-size: clamp(22px, 3.4vw, 30px); line-height: 1.2; letter-spacing: -.02em; font-weight: 700; }
   .viewer p { margin: 0 0 14px; color: var(--dim); }
   .viewer ul { margin: 0; padding-left: 18px; color: var(--dim); font-size: 15.5px; }
@@ -171,11 +171,11 @@
   @media (max-width: 560px) { .card { padding: 20px; } }
   .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; list-style: none; margin: 0 0 30px; padding: 0; }
   .steps b { display: flex; align-items: center; gap: 10px; font-size: 16px; }
-  .steps b i { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--or); color: #1a0e05; font: 800 13px/1 var(--sans); font-style: normal; }
+  .steps b i { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--or); color: #030207; font: 800 13px/1 var(--sans); font-style: normal; }
   .steps span.d { display: block; color: var(--dim); font-size: 14.5px; line-height: 1.5; margin-top: 8px; }
   @media (max-width: 700px) { .steps { grid-template-columns: 1fr; gap: 18px; } }
 
-  #go { width: 100%; font: 800 18px/1 var(--sans); color: #1a0e05; border: 0; border-radius: 12px; padding: 22px 20px; cursor: pointer; background: var(--or); transition: transform .08s, background .15s; }
+  #go { width: 100%; font: 800 18px/1 var(--sans); color: #030207; border: 0; border-radius: 12px; padding: 22px 20px; cursor: pointer; background: var(--or); transition: transform .08s, background .15s; }
   #go small { font: 600 .62em/1 var(--mono); opacity: .75; margin-left: 4px; }
   #go:hover:not(:disabled) { background: var(--or2); }
   #go:active:not(:disabled) { transform: translateY(1px); }
@@ -187,8 +187,8 @@
   .portpick select { height: auto; }
   .portpick button.ghost { background: transparent; color: var(--dim); border: 1px solid var(--line); font-weight: 600; }
   .portpick select, .portpick button { display: block; width: 100%; margin-top: 10px; font: 600 14px/1 var(--sans); padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface2); color: var(--fg); }
-  .portpick button { background: var(--or); color: #1a0e05; border: 0; font-weight: 800; cursor: pointer; }
-  .busywarn { display: none; margin: 18px 0 0; padding: 14px 16px; border-radius: 12px; border: 2px solid var(--or); background: rgba(255,122,26,.12); color: var(--fg); font-size: 15px; line-height: 1.45; }
+  .portpick button { background: var(--or); color: #030207; border: 0; font-weight: 800; cursor: pointer; }
+  .busywarn { display: none; margin: 18px 0 0; padding: 14px 16px; border-radius: 12px; border: 2px solid var(--or); background: rgba(138,60,255,.14); color: var(--fg); font-size: 15px; line-height: 1.45; }
   .busywarn b { display: block; color: var(--or2); font-size: 16px; margin-bottom: 4px; }
   body.busy .busywarn { display: block; }
   body.busy #go { background: var(--surface2); color: var(--or2); }
@@ -211,13 +211,13 @@
   #phases li.now { color: var(--or2); font-weight: 700; }
   #phases li.now::before { background: var(--or); }
   #phases li.done { color: var(--dim); }
-  #phases li.done::before { background: #7a4a22; }
+  #phases li.done::before { background: #7a22a0; }
   body.finished #phases li.done::before { background: var(--ok); }
 
   .note { color: var(--dim); font-size: 14.5px; margin: 18px 0 0; }
   .fwother { margin: 10px 0 0; }
   #fwpick { background: transparent; color: var(--dim); border: 1px solid var(--line); font-size: 13px; padding: 6px 10px; cursor: pointer; }
-  .note.warn { color: #ffb37a; }
+  .note.warn { color: #ff8af0; }
   details { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
   summary { cursor: pointer; color: var(--dim); font-size: 14.5px; }
   summary:hover { color: var(--fg); }
@@ -233,13 +233,16 @@
   footer .mk i { color: var(--or); font-style: italic; }
   [hidden] { display: none !important; }
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .fill::after { animation: none !important; } }
+  /* Ozy's FMini-1 Modded: the dark glow behind everything (ultraviolet, blood magenta, teal: the splash's) */
+  body { background: radial-gradient(1000px 560px at 50% -160px, rgba(138,60,255,.22), rgba(138,60,255,0) 70%), radial-gradient(800px 560px at 0% 70%, rgba(255,30,110,.10), rgba(255,30,110,0) 70%), radial-gradient(800px 560px at 100% 100%, rgba(0,255,200,.08), rgba(0,255,200,0) 70%), var(--bg) fixed; }
+  ::selection { background: #ff1e6e; color: #030207; }
 </style>
 </head>
 <body>
 
 <header class="nav">
   <div class="wrap">
-    <a class="brand" href="#top" aria-label="FMini-1"><i>FM</i>ini-<i>1</i></a>
+    <a class="brand" href="#top" aria-label="Ozy's FMini-1 Modded"><span style="color:var(--or2)">OZY'S </span><i>FM</i>ini-<i>1</i><span style="color:var(--ok)"> MODDED</span></a>
     <nav>
       <a href="#features" data-t="nav_f"></a>
       <a href="#screens" data-t="nav_s"></a>
@@ -259,7 +262,7 @@
       <div class="copy1" id="copy1">
         <p class="kick"><span data-t="announce"></span><span class="ver" id="ver">v1.1.0</span></p>
         <h1 class="logo"><span class="f">FM</span>ini-<span class="f">1</span></h1>
-        <p class="by">by Ruppert</p>
+        <p class="by">modded by Ozy · a fork of <a href="https://github.com/ruppert/fmini-1" style="color:var(--or2)">FMini-1</a> by Ruppert</p>
         <p class="tag" data-t="tagline"></p>
         <p class="sub" data-t="sub"></p>
         <div class="cta">
@@ -386,8 +389,8 @@
 
 <footer>
   <div class="wrap">
-    <span class="mk"><i>FM</i>ini-<i>1</i> <small style="font-weight:600;font-size:13px;letter-spacing:0;color:var(--dim)">by Ruppert</small></span>
-    <span class="credits"><span data-t="cr_made"></span> <a href="https://github.com/hugelton/Felucca" target="_blank" rel="noopener">Felucca</a><span data-t="cr_made2"></span><br><span data-t="cr_moog"></span><br><span data-t="cr_ai"></span></span><br><br>
+    <span class="mk"><span style="color:var(--or2)">OZY'S </span><i>FM</i>ini-<i>1</i><span style="color:var(--ok)"> MODDED</span> <small style="font-weight:600;font-size:13px;letter-spacing:0;color:var(--dim)">a fork of FMini-1 by Ruppert</small></span>
+    <span class="credits">Ozy's FMini-1 Modded is Ozy's fork of FMini-1 (<a href="https://github.com/ruppert/fmini-1" target="_blank" rel="noopener">github.com/ruppert/fmini-1</a>): the voices and the effects on both cores, the CPU governor and the dark psychedelic look. Its source: <a href="https://github.com/ozymaniacsom/fmini-1" target="_blank" rel="noopener">github.com/ozymaniacsom/fmini-1</a> (GPL-3.0).<br><span data-t="cr_made"></span> <a href="https://github.com/hugelton/Felucca" target="_blank" rel="noopener">Felucca</a><span data-t="cr_made2"></span><br><span data-t="cr_moog"></span><br><span data-t="cr_ai"></span></span><br><br>
     FMini-1 by Ruppert, a custom firmware based on Felucca by Leo Kuroshita (@kurogedelic), <a href="https://hugelton.com" target="_blank" rel="noopener">Hügelton Instruments</a>, with its CrispyZebra waveforms, drum voices, Sample Pack and Fukiai icons (MIT).<br>
     Font: Inter Tight (The Inter Project Authors, SIL OFL 1.1). Samples: Versilian Studios VSCO-2 Community Edition and VCSL (CC0 1.0).<br>
     FM6 engine: msfa from Dexed (Google Inc., Pascal Gauthier, Apache-2.0). The package also holds three JieLi AC79 SDK files, uboot.boot, cfg_tool.bin and eq_cfg_hw.bin (JieLi Technology, Apache-2.0). Licences: <a href="https://github.com/hugelton/Felucca/blob/main/LICENSING.md">LICENSING</a>, <a href="https://github.com/hugelton/Felucca/blob/main/LICENSE">GPL-3.0</a>, <a href="https://github.com/hugelton/Felucca/tree/main/LICENSES/">all</a>.<br>
@@ -406,10 +409,10 @@ const TEXT = {
     fw_pick: "Instalar outro firmware (.fwsc)…", fw_bad: "Este arquivo não é um firmware FM-1 válido.",
     editor: "Editor",
     direct: "Ligue o cabo USB direto no computador. Não precisa de Probe nem de Transporter.",
-    beta: "O FMini-1 é uma versão experimental. O autor não se responsabiliza se o seu FM-1 for danificado ou se comportar de forma estranha por causa deste firmware personalizado. Use por sua conta e risco.",
+    beta: "O Ozy's FMini-1 Modded é uma versão experimental, um fork do FMini-1. O autor não se responsabiliza se o seu FM-1 for danificado ou se comportar de forma estranha por causa deste firmware personalizado. Use por sua conta e risco.",
     nomidi: "Este navegador não consegue. Abra a página no Chrome ou no Edge.", loadfail: "Não foi possível carregar: ",
     start: "Iniciando", verify: "Verificando", loader: "Entrando no modo de atualização", write: "Gravando",
-    reboot: "Reiniciando", done: "Pronto! O FM-1 agora é um FMini-1", e_support: "Apoio", h_support: "Suporte o projeto", l_support: "Foram mais de cem horas de trabalho voluntário (mesmo com a ajuda de IA). E sigo corrigindo bugs e implementando novas funções. Seria ótimo se você me apoiasse para continuar este trabalho!!!", btn_support: "Doar", tip_t: "Firmware instalado!", tip_b: "Se você gostar dele, considere dar uma ajuda para o projeto para continuar o aprimoramento dele. Obrigado!", tip_go: "Apoiar no Ko-fi", tip_x: "Fechar", donate: "Apoiar", donate_s: "☕", stopped: "Interrompido. Desconecte e reconecte o USB e aperte Instalar de novo.",
+    reboot: "Reiniciando", done: "Pronto! O FM-1 agora é um Ozy's FMini-1 Modded", e_support: "Apoio", h_support: "Apoie o autor do FMini-1", l_support: "De Guilherme Ruppert, autor do FMini-1: Foram mais de cem horas de trabalho voluntário (mesmo com a ajuda de IA). E sigo corrigindo bugs e implementando novas funções. Seria ótimo se você me apoiasse para continuar este trabalho!!!", btn_support: "Doar", tip_t: "Firmware instalado!", tip_b: "Se você gostar dele, considere dar uma ajuda para o projeto para continuar o aprimoramento dele. Obrigado!", tip_go: "Apoiar no Ko-fi", tip_x: "Fechar", donate: "Apoiar", donate_s: "☕", stopped: "Interrompido. Desconecte e reconecte o USB e aperte Instalar de novo.",
     error: "Erro: ",
     denied: "O acesso ao MIDI (SysEx) não foi permitido. Permita o MIDI nas configurações do site (barra de endereço) e aperte Instalar de novo.",
     notfound: "FM-1 não encontrado. Confira o cabo USB (precisa ser de dados), feche outros apps que usam MIDI e aperte Instalar de novo.",
@@ -425,7 +428,7 @@ const TEXT = {
     license: "GPL-3.0, sem garantia. Código-fonte:",
     ready: "Pronto. Conecte o FM-1 e aperte Instalar.",
     step1: "Conectar", step2: "Instalar", step3: "Tocar",
-    s1: "Ligue o FM-1 ao computador com um cabo USB de dados.", s2: "Aperte Instalar e mantenha o cabo conectado até aparecer Pronto.", s3: "O FM-1 reinicia como FMini-1, com a tela de abertura.",
+    s1: "Ligue o FM-1 ao computador com um cabo USB de dados.", s2: "Aperte Instalar e mantenha o cabo conectado até aparecer Pronto.", s3: "O FM-1 reinicia como Ozy's FMini-1 Modded, com a tela de abertura psicodélica escura.",
     ph_verify: "Verificar", ph_loader: "Modo de atualização", ph_write: "Gravar", ph_reboot: "Reiniciar", ph_done: "Pronto",
     tagline: "Emulação do Minimoog para o FM-1 (mono/poly)",
     feat: "3 osciladores · filtro ladder · 200 presets · arpejador · MIDI",
@@ -438,10 +441,10 @@ const TEXT = {
     fw_pick: "Install another firmware (.fwsc)…", fw_bad: "This file is not a valid FM-1 firmware.",
     editor: "Editor (after installing: edit sounds and sequences from the computer)",
     direct: "Connect the USB cable directly to the computer. No probe or Transporter is needed.",
-    beta: "FMini-1 is an experimental release. The author accepts no responsibility if your FM-1 is damaged or misbehaves because of this custom firmware. Use it at your own risk.",
+    beta: "Ozy's FMini-1 Modded is an experimental release, a fork of FMini-1. The author accepts no responsibility if your FM-1 is damaged or misbehaves because of this custom firmware. Use it at your own risk.",
     nomidi: "This browser cannot do it. Open the page in Chrome or Edge.", loadfail: "Could not load: ",
     start: "Starting", verify: "Verifying", loader: "Switching to update mode", write: "Writing",
-    reboot: "Restarting", done: "Done", e_support: "Support", h_support: "Buy me a Coffee", l_support: "It took over a hundred hours for this voluntary work (even with the help of AI). And I am still fixing bugs and implementing new features. It would be great if you support me to continue this work!!!", btn_support: "Tip", tip_t: "Firmware installed!", tip_b: "If you like it, consider a tip to support the project. Thank you!", tip_go: "Support on Ko-fi", tip_x: "Close", donate: "Support", donate_s: "☕", stopped: "Stopped. Replug the USB cable and press Install again.",
+    reboot: "Restarting", done: "Done", e_support: "Support", h_support: "Buy FMini-1's author a coffee", l_support: "From Guilherme Ruppert, FMini-1's author: It took over a hundred hours for this voluntary work (even with the help of AI). And I am still fixing bugs and implementing new features. It would be great if you support me to continue this work!!!", btn_support: "Tip", tip_t: "Firmware installed!", tip_b: "If you like it, consider a tip to support the project. Thank you!", tip_go: "Support on Ko-fi", tip_x: "Close", donate: "Support", donate_s: "☕", stopped: "Stopped. Replug the USB cable and press Install again.",
     error: "Error: ",
     denied: "MIDI (SysEx) access was not allowed. Allow MIDI in the site settings (address bar) and press Install again.",
     notfound: "FM-1 not found. Check the USB cable (a data cable), close other apps that use MIDI, and press Install again.",
@@ -457,7 +460,7 @@ const TEXT = {
     license: "GPL-3.0, no warranty. Source:",
     ready: "Ready. Connect your FM-1 and press Install.",
     step1: "Connect", step2: "Install", step3: "Play",
-    s1: "Plug the FM-1 into the computer with a USB data cable.", s2: "Press Install and keep the cable connected until it says Done.", s3: "The FM-1 restarts as FMini-1 with its splash screen.",
+    s1: "Plug the FM-1 into the computer with a USB data cable.", s2: "Press Install and keep the cable connected until it says Done.", s3: "The FM-1 restarts as Ozy's FMini-1 Modded with its dark psychedelic splash screen.",
     ph_verify: "Verify", ph_loader: "Update mode", ph_write: "Write", ph_reboot: "Restart", ph_done: "Done",
     tagline: "A Minimoog emulation for the M-Vave FM-1 (mono/poly)",
     feat: "3 oscillators · ladder filter · 200 presets · arpeggiator · MIDI",

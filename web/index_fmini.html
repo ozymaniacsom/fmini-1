@@ -1,22 +1,22 @@
 <!doctype html>
 <!-- SPDX-License-Identifier: GPL-3.0-only
-     FMini-1 installer. Based on the Felucca installer (Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments) -->
+     Ozy's FMini-1 Modded installer (a fork of the FMini-1 installer by Guilherme Ruppert). Based on the Felucca installer (Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments) -->
 <html lang="pt">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>FMini-1 installer</title>
+<title>Ozy's FMini-1 Modded installer</title>
 <style>
   :root {
-    --bg: #070605; --panel: #12100e; --panel2: #191613; --line: #2a251f;
-    --fg: #f3ede2; --dim: #9a9084; --or: #ff6a13; --or2: #ff8a3d; --teal: #2fb4b0; --red: #ff5a4a; --ok: #7bd88f;
+    --bg: #030207; --panel: #0c0716; --panel2: #140b24; --line: #2a1e44;
+    --fg: #e8fff8; --dim: #b49be8; --or: #00ffc8; --or2: #ff1e6e; --teal: #00ffc8; --red: #ff1e6e; --ok: #be96ff;
   }
   * { box-sizing: border-box; }
   html { background: var(--bg); }
   body { margin: 0; color: var(--fg); min-height: 100vh;
          font: 16px/1.55 "Avenir Next", "Segoe UI", Inter, "Helvetica Neue", Arial, sans-serif;
-         background: radial-gradient(900px 520px at 50% -80px, #2b1707 0%, rgba(43,23,7,0) 70%), var(--bg); }
+         background: radial-gradient(900px 520px at 50% -80px, #22104a 0%, rgba(34,16,74,0) 70%), radial-gradient(700px 400px at 10% 110%, #00261e 0%, rgba(0,38,30,0) 70%), var(--bg); }
   main { max-width: 680px; margin: 0 auto; padding: 28px 18px 56px; }
   .top { display: flex; justify-content: flex-end; }
   .lang { font: 600 12px/1 inherit; letter-spacing: .08em; color: var(--dim); background: transparent; border: 1px solid var(--line);
@@ -29,40 +29,40 @@
   .logo .f { color: var(--or); }
   .by { display: flex; align-items: center; gap: 16px; justify-content: center; margin: 10px auto 0; max-width: 420px;
         font-weight: 700; font-size: clamp(20px, 5vw, 28px); letter-spacing: -.01em; }
-  .by::before, .by::after { content: ""; height: 1px; flex: 1; background: linear-gradient(90deg, transparent, #6b625a); }
-  .by::after { background: linear-gradient(270deg, transparent, #6b625a); }
+  .by::before, .by::after { content: ""; height: 1px; flex: 1; background: linear-gradient(90deg, transparent, #8a4cb0); }
+  .by::after { background: linear-gradient(270deg, transparent, #8a4cb0); }
   .tag { color: var(--dim); margin: 14px 0 0; font-size: 15px; }
   .feat { color: var(--or2); font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; margin: 6px 0 0; font-weight: 600; }
 
   .synth { position: relative; margin: 22px -4px 0; }
   .synth img { display: block; width: 100%; height: auto; border-radius: 14px; }
   .synth::after { content: ""; position: absolute; inset: 0; border-radius: 14px; pointer-events: none;
-                  background: linear-gradient(180deg, rgba(7,6,5,.55) 0%, rgba(7,6,5,0) 22%, rgba(7,6,5,0) 70%, var(--bg) 100%); }
-  .ver { position: absolute; right: 12px; top: 12px; z-index: 1; font: 700 12px/1 inherit; letter-spacing: .06em; color: #1b1208;
+                  background: linear-gradient(180deg, rgba(10,1,20,.55) 0%, rgba(10,1,20,0) 22%, rgba(10,1,20,0) 70%, var(--bg) 100%); }
+  .ver { position: absolute; right: 12px; top: 12px; z-index: 1; font: 700 12px/1 inherit; letter-spacing: .06em; color: #030207;
          background: var(--or); border-radius: 999px; padding: 6px 10px; }
 
   .card { background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); border-radius: 18px;
           padding: 20px; margin-top: -34px; position: relative; z-index: 2; box-shadow: 0 18px 50px rgba(0,0,0,.55); }
   .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; list-style: none; margin: 0 0 18px; padding: 0; }
-  .steps li { background: #0e0c0a; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .steps li { background: #14031f; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
   .steps b { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-  .steps b i { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--or); color: #1b1208;
+  .steps b i { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--or); color: #030207;
                font: 800 12px/1 inherit; font-style: normal; }
   .steps span { display: block; color: var(--dim); font-size: 12.5px; line-height: 1.4; margin-top: 6px; }
   @media (max-width: 560px) { .steps { grid-template-columns: 1fr; } }
 
-  #go { width: 100%; font: 800 18px/1 inherit; letter-spacing: .02em; color: #1b1208; border: 0; border-radius: 14px; padding: 18px 20px;
-        cursor: pointer; background: linear-gradient(180deg, var(--or2), var(--or)); box-shadow: 0 8px 24px rgba(255,106,19,.28), inset 0 1px 0 rgba(255,255,255,.35);
+  #go { width: 100%; font: 800 18px/1 inherit; letter-spacing: .02em; color: #030207; border: 0; border-radius: 14px; padding: 18px 20px;
+        cursor: pointer; background: linear-gradient(90deg, var(--or2), #8a3cff 45%, var(--teal) 70%, var(--or)); box-shadow: 0 8px 24px rgba(0,255,200,.35), inset 0 1px 0 rgba(255,255,255,.35);
         transition: transform .08s, filter .15s; }
   #go:hover:not(:disabled) { filter: brightness(1.07); }
   #go:active:not(:disabled) { transform: translateY(1px); }
-  #go:disabled { cursor: default; background: #2a2520; color: #6b625a; box-shadow: none; }
-  body.busy #go { background: #2a2520; color: var(--or2); }
+  #go:disabled { cursor: default; background: #2e0b40; color: #8a4cb0; box-shadow: none; }
+  body.busy #go { background: #2e0b40; color: var(--or2); }
 
   .prog { margin-top: 18px; }
-  .bar { position: relative; height: 14px; border-radius: 999px; background: #0b0908; border: 1px solid var(--line); overflow: hidden; }
-  .fill { height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #ff5a0a, var(--or2));
-          transition: width .25s ease; box-shadow: 0 0 14px rgba(255,106,19,.55); position: relative; }
+  .bar { position: relative; height: 14px; border-radius: 999px; background: #0d0118; border: 1px solid var(--line); overflow: hidden; }
+  .fill { height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #ff00e6, var(--or2));
+          transition: width .25s ease; box-shadow: 0 0 14px rgba(138,60,255,.6); position: relative; }
   body.busy .fill::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(115deg, rgba(255,255,255,.22) 0 10px, rgba(255,255,255,0) 10px 22px);
                            animation: slide 1s linear infinite; }
   @keyframes slide { to { background-position: 44px 0; } }
@@ -74,27 +74,27 @@
   body.finished #status { color: var(--ok); font-weight: 700; }
 
   #phases { display: flex; list-style: none; padding: 0; margin: 14px 0 0; gap: 6px; }
-  #phases li { flex: 1; text-align: center; font-size: 11.5px; letter-spacing: .03em; color: #6b625a; padding-top: 10px; position: relative; }
-  #phases li::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; border-radius: 3px; background: #26211b; }
+  #phases li { flex: 1; text-align: center; font-size: 11.5px; letter-spacing: .03em; color: #8a4cb0; padding-top: 10px; position: relative; }
+  #phases li::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; border-radius: 3px; background: #2e0b40; }
   #phases li.now { color: var(--or2); font-weight: 700; }
   #phases li.now::before { background: var(--or); }
   #phases li.done { color: var(--dim); }
-  #phases li.done::before { background: #6e4a2a; }
+  #phases li.done::before { background: #7a22a0; }
   body.finished #phases li.done::before { background: var(--ok); }
 
   .note { color: var(--dim); font-size: 13px; margin: 16px 0 0; }
-  .note.warn { color: #ffb37a; }
+  .note.warn { color: #ff8af0; }
   details { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
   summary { cursor: pointer; color: var(--dim); font-size: 13.5px; }
   summary:hover { color: var(--fg); }
   details p { color: var(--dim); font-size: 13px; margin: 10px 0; }
   details a { color: var(--or2); }
-  details button { font: 700 14px/1 inherit; color: var(--fg); background: #26211b; border: 1px solid var(--line); border-radius: 10px; padding: 11px 16px; cursor: pointer; }
+  details button { font: 700 14px/1 inherit; color: var(--fg); background: #2e0b40; border: 1px solid var(--line); border-radius: 10px; padding: 11px 16px; cursor: pointer; }
   details button:disabled { opacity: .35; cursor: default; }
   input[type=file] { color: var(--dim); font-size: 13px; max-width: 100%; }
-  pre { color: #7d746a; font-size: 11.5px; white-space: pre-wrap; margin: 10px 0 0; max-height: 220px; overflow: auto; }
-  footer { color: #6f665c; font-size: 11.5px; line-height: 1.6; margin-top: 30px; text-align: center; }
-  footer a { color: #8c8276; }
+  pre { color: #a07cc0; font-size: 11.5px; white-space: pre-wrap; margin: 10px 0 0; max-height: 220px; overflow: auto; }
+  footer { color: #9a6cc0; font-size: 11.5px; line-height: 1.6; margin-top: 30px; text-align: center; }
+  footer a { color: #c79cf0; }
 </style>
 </head>
 <body>
@@ -102,13 +102,15 @@
   <div class="top"><button class="lang" id="lang" aria-label="Language"></button></div>
 
   <section class="hero">
+    <div class="by" style="margin:0 auto 4px;color:var(--or2)">OZY'S</div>
     <h1 class="logo"><span class="f">FM</span>ini-<span class="f">1</span></h1>
-    <div class="by">by Ruppert</div>
+    <div class="by" style="color:var(--ok)">MODDED</div>
+    <p class="tag" style="margin-top:8px">a fork of <a href="https://github.com/ruppert/fmini-1" style="color:var(--or2)">FMini-1</a> by Guilherme Ruppert</p>
     <p class="tag" data-t="tagline"></p>
     <p class="feat" data-t="feat"></p>
   </section>
 
-  <div class="synth"><span class="ver" id="ver">v1.1.0</span><img alt="FMini-1" src="/*HERO*/"></div>
+  <div class="synth"><span class="ver" id="ver">v1.1.0</span><img alt="Ozy's FMini-1 Modded" src="/*HERO*/"></div>
 
   <section class="card">
     <ol class="steps">
@@ -132,7 +134,7 @@
     <p class="note" data-t="direct"></p>
     <p class="note" data-t="beta"></p>
     <p class="note"><span data-t="brick"></span>
-      <a href="https://github.com/kurogedelic/FM-1-transporter" target="_blank" rel="noopener" style="color:#ff8a3d">FM-1-transporter</a></p>
+      <a href="https://github.com/kurogedelic/FM-1-transporter" target="_blank" rel="noopener" style="color:#ff1e6e">FM-1-transporter</a></p>
 
     <details>
       <summary data-t="stockTitle"></summary>
@@ -150,6 +152,7 @@
   </section>
 
   <footer>
+    Ozy's FMini-1 Modded: a fork of FMini-1 by Guilherme Ruppert (<a href="https://github.com/ruppert/fmini-1" target="_blank" rel="noopener">github.com/ruppert/fmini-1</a>); its source: <a href="https://github.com/ozymaniacsom/fmini-1" target="_blank" rel="noopener">github.com/ozymaniacsom/fmini-1</a>.<br>
     FMini-1 by Ruppert, a custom firmware based on Felucca by Leo Kuroshita (@kurogedelic), <a href="https://hugelton.com" target="_blank" rel="noopener">Hügelton Instruments</a>, with its CrispyZebra waveforms, drum voices, Sample Pack and Fukiai icons (MIT).<br>
     Font: Inter Tight (The Inter Project Authors, SIL OFL 1.1). Samples: Versilian Studios VSCO-2 Community Edition and VCSL (CC0 1.0).<br>
     FM6 engine: msfa from Dexed (Google Inc., Pascal Gauthier, Apache-2.0). The package also holds three JieLi AC79 SDK files, uboot.boot, cfg_tool.bin and eq_cfg_hw.bin (JieLi Technology, Apache-2.0). Licences: <a href="https://github.com/hugelton/Felucca/blob/main/LICENSING.md">LICENSING</a>, <a href="https://github.com/hugelton/Felucca/blob/main/LICENSE">GPL-3.0</a>, <a href="https://github.com/hugelton/Felucca/tree/main/LICENSES/">all</a>.<br>
@@ -168,7 +171,7 @@ const TEXT = {
     editor: "Editor",
     direct: "Ligue o cabo USB direto no computador. Não precisa de Probe nem de Transporter.",
     brick: "Se a instalação falhar e o FM-1 não ligar mais, recuperá-lo exige um Transporter:",
-    beta: "O FMini-1 é uma versão experimental, baseada no Felucca. O autor não se responsabiliza se o seu FM-1 for danificado ou se comportar de forma estranha por causa deste firmware personalizado. Use por sua conta e risco.",
+    beta: "O Ozy's FMini-1 Modded é uma versão experimental, um fork do FMini-1 (baseado no Felucca). O autor não se responsabiliza se o seu FM-1 for danificado ou se comportar de forma estranha por causa deste firmware personalizado. Use por sua conta e risco.",
     back: "Baixe o FM-1 V15 oficial na M-VAVE e escolha o FM-1.fwsc sem modificações. O navegador valida o arquivo localmente; ele não é enviado a nenhum servidor.",
     stockTitle: "Voltar ao V15 oficial", stockFile: "FM-1.fwsc oficial", stockGo: "Fazer backup e voltar ao V15 oficial",
     stockBackup: "Músicas, músicas salvas, bancos de sons, samples e ajustes atuais são salvos antes. Firmware antigo precisa de uma atualização do Felucca para fazer o backup completo.",
@@ -179,7 +182,7 @@ const TEXT = {
     backup: "Salvando backup completo ", stockError: "Não foi possível validar o firmware oficial: ",
     nomidi: "Este navegador não consegue. Abra a página no Chrome ou no Edge.", loadfail: "Não foi possível carregar: ",
     start: "Iniciando", verify: "Verificando", loader: "Entrando no modo de atualização", write: "Gravando",
-    reboot: "Reiniciando", done: "Pronto! O FM-1 agora é um FMini-1", stopped: "Interrompido. Desconecte e reconecte o USB e aperte Instalar de novo.",
+    reboot: "Reiniciando", done: "Pronto! O FM-1 agora é um Ozy's FMini-1 Modded", stopped: "Interrompido. Desconecte e reconecte o USB e aperte Instalar de novo.",
     error: "Erro: ",
     denied: "O acesso ao MIDI (SysEx) não foi permitido. Permita o MIDI nas configurações do site (barra de endereço) e aperte Instalar de novo.",
     notfound: "FM-1 não encontrado. Confira o cabo USB (precisa ser de dados), feche outros apps que usam MIDI e aperte Instalar de novo.",
@@ -193,10 +196,10 @@ const TEXT = {
     license: "GPL-3.0, sem garantia. Código-fonte:",
     ready: "Pronto. Conecte o FM-1 e aperte Instalar.",
     step1: "Conectar", step2: "Instalar", step3: "Tocar",
-    s1: "Ligue o FM-1 ao computador com um cabo USB de dados.", s2: "Aperte Instalar e mantenha o cabo conectado até aparecer Pronto.", s3: "O FM-1 reinicia como FMini-1, com a tela de abertura.",
+    s1: "Ligue o FM-1 ao computador com um cabo USB de dados.", s2: "Aperte Instalar e mantenha o cabo conectado até aparecer Pronto.", s3: "O FM-1 reinicia como Ozy's FMini-1 Modded, com a tela de abertura psicodélica escura.",
     ph_verify: "Verificar", ph_loader: "Modo de atualização", ph_write: "Gravar", ph_reboot: "Reiniciar", ph_done: "Pronto",
     tagline: "Um sintetizador monofônico estilo Minimoog para o M-VAVE FM-1",
-    feat: "3 osciladores · filtro ladder · 200 presets · arpejador · MIDI",
+    feat: "3 osciladores · filtro ladder · 200 presets · vozes nos dois núcleos · MIDI",
     risk: "Use por sua conta e risco", logT: "Detalhes", fw: "Firmware",
   },
   ja: {
@@ -206,7 +209,7 @@ const TEXT = {
     editor: "エディタ（インストール後、パソコンから音色やシーケンスを編集）",
     direct: "USB ケーブルはパソコンに直接つないでください。Probe や Transporter などの機材は不要です。",
     brick: "万一インストールに失敗して起動しなくなった場合は、復旧に Transporter が必要です:",
-    beta: "FMini-1 は Felucca をベースにした実験版です。このカスタムファームウェアを使ったことで FM-1 が壊れたり不具合が起きたりしても、作者は一切の責任を負いません。自己責任でお使いください。",
+    beta: "Ozy's FMini-1 Modded は FMini-1（Felucca ベース）のフォークで、実験版です。このカスタムファームウェアを使ったことで FM-1 が壊れたり不具合が起きたりしても、作者は一切の責任を負いません。自己責任でお使いください。",
     back: "M-VAVEから公式FM-1 V15を取得し、未変更のFM-1.fwscを選んでください。ファイルはこのブラウザ内で検証し、サーバーへ送りません。",
     stockTitle: "公式V15に戻す", stockFile: "公式FM-1.fwsc", stockGo: "バックアップして公式V15へ戻す",
     stockBackup: "現在の曲・保存曲・音色バンク・サンプル・設定を先に保存します。全体バックアップ非対応版は、Feluccaを更新してから行ってください。復元はFeluccaを再インストールしてエディタから行います。",
@@ -231,7 +234,7 @@ const TEXT = {
     license: "GPL-3.0、無保証。ソース:",
     ready: "準備完了。FM-1 を接続して「インストール」を押してください。",
     step1: "接続", step2: "インストール", step3: "演奏",
-    s1: "USB データケーブルで FM-1 をパソコンに接続します。", s2: "「インストール」を押し、「完了」と出るまでケーブルを抜かないでください。", s3: "FM-1 が再起動し、FMini-1 のスプラッシュ画面が表示されます。",
+    s1: "USB データケーブルで FM-1 をパソコンに接続します。", s2: "「インストール」を押し、「完了」と出るまでケーブルを抜かないでください。", s3: "FM-1 が再起動し、Ozy's FMini-1 Modded のスプラッシュ画面が表示されます。",
     ph_verify: "確認", ph_loader: "更新モード", ph_write: "書き込み", ph_reboot: "再起動", ph_done: "完了",
     tagline: "M-VAVE FM-1 用 Minimoog スタイルのモノフォニックシンセ",
     feat: "3 オシレーター · ラダーフィルター · 100 プリセット · アルペジエーター · MIDI",
@@ -244,7 +247,7 @@ const TEXT = {
     editor: "Editor (after installing: edit sounds and sequences from the computer)",
     direct: "Connect the USB cable directly to the computer. No probe or Transporter is needed.",
     brick: "If an install fails and the FM-1 no longer starts, recovering it needs a Transporter:",
-    beta: "FMini-1 is an experimental release based on Felucca. The author accepts no responsibility if your FM-1 is damaged or misbehaves because of this custom firmware. Use it at your own risk.",
+    beta: "Ozy's FMini-1 Modded is an experimental fork of FMini-1 (based on Felucca). The author accepts no responsibility if your FM-1 is damaged or misbehaves because of this custom firmware. Use it at your own risk.",
     back: "Get official FM-1 V15 from M-VAVE and select the unmodified FM-1.fwsc. The browser validates it locally; it is not sent to a server.",
     stockTitle: "Return to official V15", stockFile: "Official FM-1.fwsc", stockGo: "Back up and return to official V15",
     stockBackup: "Current music, saved music, sound banks, samples and settings are saved first. Older firmware needs a Felucca update for complete backups. To restore an archive later, reinstall Felucca and use the editor.",
@@ -269,10 +272,10 @@ const TEXT = {
     license: "GPL-3.0, no warranty. Source:",
     ready: "Ready. Connect your FM-1 and press Install.",
     step1: "Connect", step2: "Install", step3: "Play",
-    s1: "Plug the FM-1 into the computer with a USB data cable.", s2: "Press Install and keep the cable connected until it says Done.", s3: "The FM-1 restarts as FMini-1 with its splash screen.",
+    s1: "Plug the FM-1 into the computer with a USB data cable.", s2: "Press Install and keep the cable connected until it says Done.", s3: "The FM-1 restarts as Ozy's FMini-1 Modded with its dark psychedelic splash screen.",
     ph_verify: "Verify", ph_loader: "Update mode", ph_write: "Write", ph_reboot: "Restart", ph_done: "Done",
     tagline: "A Minimoog-style monophonic synth for the M-VAVE FM-1",
-    feat: "3 oscillators · ladder filter · 200 presets · arpeggiator · MIDI",
+    feat: "3 oscillators · ladder filter · 200 presets · voices on both cores · MIDI",
     risk: "Use at your own risk", logT: "Details", fw: "Firmware",
   },
 };

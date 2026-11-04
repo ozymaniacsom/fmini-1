@@ -1,4 +1,16 @@
 
+# Ozy's FMini-1 Modded: licensing
+
+Ozy's FMini-1 Modded is a modified version of FMini-1 by Guilherme Ruppert
+(<https://github.com/ruppert/fmini-1>), itself based on Felucca by Leo Kuroshita. It is licensed, as they are, under
+the GNU General Public License, version 3 only (`GPL-3.0-only`, `LICENSE`). Its changes and their dates are listed in
+`CHANGES-OZY.md` (GPL-3.0 section 5a); its complete corresponding source is this repository
+(<https://github.com/ozymaniacsom/fmini-1>). The changes are Copyright (C) 2026 Ozy, under the same licence. Everything
+below, Felucca's licensing as FMini-1 keeps it, applies unchanged.
+
+"Minimoog" and "Moog" are trademarks of Moog Music Inc. This fork is not affiliated with or endorsed by Moog Music, by
+M-VAVE, or by FMini-1's or Felucca's authors.
+
 # Felucca licensing
 
 Felucca is free software, licensed under the GNU General Public License, version 3 only

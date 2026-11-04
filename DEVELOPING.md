@@ -127,6 +127,28 @@ The model and its numbers are in `tools/fmini_filter.py` (read its header); the 
   about 5), as a sine with THD of about 0.3 to 1.3 % in the middle and 2 to 6 % at the lowest pitches.
 - **CPU.** `fmini_render` is 227 instructions a sample in its loops on the chip (static count, `tests/target_budget.txt`), up from 170
   for the old filter. Not measured on hardware.
+- **Two cores for one part's voices.** The second core (MENU > SYSTEM > 2ND CORE ON) is handed whole parts by `fx.c
+  mix_block`, and FMini-1 plays every voice on track 1, so it used to idle. `voice.c track_render` now gives a share of
+  the sounding voices of an FMINI part (2 or more sounding) to the second core (`c1_voices`) while the first renders the
+  rest (`track_voices`), then adds them in, whenever the second core has no part of its own that block (`vs_parts`). The
+  share is half plus `vs_bias`, which moves one voice a block towards the core that finished first (TIMER4 stamps,
+  `VS_SLACK`). Each voice's render touches its own `voice_t`; the VCO drift's draws from the part's noise generator
+  (`fmini_nst`) may repeat when both cores draw at once. With 2ND CORE OFF, or a unit that misreads (`2ND CORE MISREAD:
+  OFF`), everything renders on one core as before. Console: `cpu2_vblocks`, `cpu2_vbias`.
+- **The buses one block behind (Ozy's).** `fx.c mix_block` queues each block's sends (`fx_queue`, after `perf_pre`);
+  the next block runs the chorus, delay and reverb on them (`fx_c1` into `wet`, `dside`, the reverb's side). The second
+  core runs them first in its job (`vs_fxq`, `vs_fx1`), else the first core after the parts. The second core reads only
+  the queued copies, the buses' state and `fxq_on` (the parts' send levels as they were when queued). A reverb model
+  change fades through `mx[1].b`, free whenever the buses run.
+- **The CPU governor (Ozy's).** `audio.c gov_half`, each half: the voice cost (`gov_voice`, ticks, fast up, slow down,
+  measured with 3 or more voices) and the idle render (`gov_base`, with none) give `voice.c vcap`, the voices that fit in
+  80 % of a half (4 to 12). `voice_room` and `voice_alloc` budget against `vcap`, not `NVOICE`; voices over it shed one a
+  half (`shed_voice`), as does a half over 92 %. `cpu_crit` (the "CPU High" pop-up) counts only halves past their time.
+  Console: `gov_vcap`, `gov_voice_us`, `gov_base_us`, `gov_hot`. Not tested on hardware.
+- **The look (Ozy's FMini-1 Modded).** The FMINI screens' palette is the `FA_*` colours and the literal `FA_RGB` values in
+  `fmini_app.c` (dark: luminous teal values, ultraviolet labels, near-black panels, dark gold buttons, glowing conduits for
+  the side cheeks in `fa_scene`). The power-on picture is `fmini_splash.h` (240 x 240, a 256-colour palette and an index a
+  pixel); `tools/gen_splash.py` makes it from `assets/fmini-splash.png`. The fork's list of changes is `CHANGES-OZY.md`.
 
 `tests/fmini_filter_test.c` checks the filter against the hardware's numbers, not against the model: singing from silence (pitch,
 THD), 1 V/oct over four octaves of keys, KBD 0 fixed, the dial's marks within a quarter tone, the emphasis table, no singing below

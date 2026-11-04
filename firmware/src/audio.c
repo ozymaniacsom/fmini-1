@@ -43,24 +43,67 @@ static void audio_block(int32_t *out, uint32_t n)       /* mix (fx.c), then Q15 
     }
 }
 
-/* Overload: two halves in a row above 93 % (the render plus TIMER5 nested in it), fade one voice over the
- * next block, and one more each half while it lasts. Keep each part's
- * lowest POLY note and MONO / LEGATO / UNISON lead, as the shared budget does. */
+/* (Ozy's FMini-1 Modded) The CPU governor: no half may run past its time, or the audio tears (the DMA plays a half
+ * not written yet). Each half measures its render (TIMER5 nested in it included: the deadline sees both) and the
+ * voices that sounded. A voice's share (the render less the idle part, over the voices) is followed fast up and
+ * slowly down, measured with GOV_NMIN voices or more (with fewer, the second core gets none); the idle part with
+ * none. The voice cap (voice.c vcap) is the voices that fit in GOV_TARGET of a half at that share: a new note over
+ * it takes a voice (voice.c voice_alloc), and voices over it fade out one a half. A half over GOV_HOT takes its own
+ * share at once and fades a voice. So a chord too big for the CPU loses its oldest notes instead of tearing.
+ * Each fade keeps each part's lowest POLY note and MONO / LEGATO / UNISON lead, as the shared budget does.
+ * "Warning: CPU High" (fmini_app.c) now shows only for a half that ran late: a tear the governor did not stop. */
 static volatile uint8_t shed_req;
-volatile uint32_t cpu_crit;                            /* overloads seen (shed_check): the FMINI pop-up "Warning: CPU High" (fmini_app.c) */
-static uint8_t shed_over;                              /* bit k: the half k halves ago was over 93 % */
-#define SHED_TICKS ((HALF_FRAMES * 1000000u / FS) * 93u / 100u * FM1_TICKS_PER_US)   /* 93 % of a half */
+volatile uint32_t cpu_crit;                            /* halves that ran late: the FMINI pop-up "Warning: CPU High" (fmini_app.c) */
 static uint32_t shed_count;
+#define GOV_HALF ((HALF_FRAMES * 1000000u / FS) * FM1_TICKS_PER_US)   /* a half, TIMER4 ticks */
+#define GOV_TARGET (GOV_HALF * 80u / 100u)
+#define GOV_HOT (GOV_HALF * 92u / 100u)
+#define GOV_NMIN 3u
+static uint32_t gov_base = GOV_HALF / 8u;              /* ticks: a half's render with no voice (the buses, the master) */
+static uint32_t gov_voice = GOV_HALF / 24u;            /* ticks: a voice's share of a half (12 fit, until measured) */
+static uint32_t gov_hot;                               /* halves over GOV_HOT (console) */
 
-/* end of a half: all = its ticks, TIMER5 nested in it included -> the render alone in us. The deadline sees
- * both; shed after 2 overloaded halves in a row (out of line: keeps the ISR's render loops as they were) */
+static uint32_t gov_voices(void)                        /* voices that render (the fading ones too) */
+{
+    uint32_t p, i, n = 0;
+    for (p = 0; p < NPART; p++)
+        for (i = 0; i < NVOICE; i++)
+            n += trk[p].v[i].active;
+    return n;
+}
+
+static void gov_half(uint32_t all)
+{
+    uint32_t nv = gov_voices(), cap;
+    if (!nv) {
+        if (all > gov_base)
+            gov_base += (all - gov_base + 7u) / 8u;
+        else
+            gov_base -= (gov_base - all) / 8u;
+    } else if (nv >= GOV_NMIN) {
+        uint32_t per = (all > gov_base ? all - gov_base : 0u) / nv;
+        if (all > GOV_HOT && per > gov_voice)
+            gov_voice = per;                           /* too close: what this half showed, at once */
+        else if (per > gov_voice)
+            gov_voice += (per - gov_voice + 1u) / 2u;  /* up: fast */
+        else
+            gov_voice -= (gov_voice - per) / 64u;      /* down: slow (~0.2 s) */
+    }
+    cap = gov_voice && GOV_TARGET > gov_base ? (GOV_TARGET - gov_base) / gov_voice : 0u;
+    vcap = (uint8_t)(cap < VCAP_MIN ? VCAP_MIN : cap > NVOICE ? NVOICE : cap);
+    if (all > GOV_HOT)
+        gov_hot++;
+    if (all > GOV_HALF)
+        cpu_crit++;                                    /* past its time: a tear ("Warning: CPU High") */
+    if (all > GOV_HOT || voices_busy() > vcap)
+        shed_req = 1;                                  /* a voice fades over the next block */
+}
+
+/* end of a half: all = its ticks, TIMER5 nested in it included -> the render alone in us (out of line: keeps the
+ * ISR's render loops as they were) */
 static __attribute__((noinline)) uint32_t shed_check(uint32_t all)
 {
-    shed_over = (uint8_t)(shed_over << 1 | (all > SHED_TICKS));
-    if ((shed_over & 3u) == 3u) {
-        shed_req = 1;
-        cpu_crit++;
-    }
+    gov_half(all);
     return (all - t5_nested_ticks) / FM1_TICKS_PER_US;
 }
 
@@ -132,8 +175,10 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
             song.cpu_q8 = load / CPU_AVG;
             audio_cpu_rem = load % CPU_AVG;
         }
-        if (fm1_audio_free_half() != half)
+        if (fm1_audio_free_half() != half) {
             felucca_dbg.late++;                         /* the DMA moved on while we rendered */
+            cpu_crit++;                                 /* (a tear: "Warning: CPU High") */
+        }
         felucca_dbg.halves++;
         felucca_dbg.last_us = us;
         if (us > felucca_dbg.max_us)

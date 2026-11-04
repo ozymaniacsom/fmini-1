@@ -200,12 +200,18 @@ static void con_status(void)
     con_kv("audio_max_us", (int32_t)felucca_dbg.max_us);
     con_kv("audio_late", (int32_t)felucca_dbg.late);
     con_kv("voices_shed", (int32_t)shed_count);
+    con_kv("gov_vcap", (int32_t)vcap);                  /* (Ozy's) the CPU governor (audio.c gov_half): the voice cap, */
+    con_kv("gov_voice_us", (int32_t)(gov_voice / FM1_TICKS_PER_US));   /* a voice's share of a half, */
+    con_kv("gov_base_us", (int32_t)(gov_base / FM1_TICKS_PER_US));     /* the render with no voice, */
+    con_kv("gov_hot", (int32_t)gov_hot);                /* halves over 92 % */
 #if FELUCCA_CPU2
+    con_kv("cpu2_vbias", (int32_t)vs_bias);             /* voices the second core takes over half (voice.c) */
     con_kv("cpu2_set", (ui_prefs2 & (PREF_CPU2_ON >> 16)) != 0u);   /* MENU > 2ND CORE: 1 ON (from power-on), 0 OFF */
     con_kv("cpu2", fm1_c1_on);                          /* the second core renders parts (hal/fm1_cpu1.h) */
     con_kv("cpu2_gave_up", fm1_c1_gave_up);             /* 1: it misread a job, 2: one timed out (then one core) */
     con_kv("cpu2_bad", (int32_t)fm1_c1_mb.bad);
     con_kv("cpu2_blocks", (int32_t)c1_blocks);          /* blocks it took parts of (fx.c mix_block) */
+    con_kv("cpu2_vblocks", (int32_t)vs_blocks);         /* (FMini-1) blocks it took voices of (voice.c c1_voices) */
     con_kv("cpu2_wait_max_us", (int32_t)(fm1_c1_wait_max / 24u));
     con_kv("cpu2_stack", (int32_t)fm1_cpu1_stack_used());
 #endif

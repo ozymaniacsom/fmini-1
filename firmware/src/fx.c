@@ -971,7 +971,12 @@ static void rev_run(uint32_t ty, const int32_t *rev_in, int32_t *out, uint32_t n
  * cleared, the new one starts from silence */
 static __attribute__((noinline)) void rev_switch(const int32_t *rev_in, int32_t *wet, uint32_t n, int32_t rt)
 {
+#if FELUCCA_CPU2
+    int32_t *t = mx[1].b, g = 65536, d = 65536 / (int32_t)n;   /* (the buses run while the first core's parts use
+                                                                * part_buf: fx_c1; mx[1] is free whenever they do) */
+#else
     int32_t *t = part_buf, g = 65536, d = 65536 / (int32_t)n;
+#endif
     uint32_t i;
     for (i = 0; i < n; i++)
         t[i] = 0;
@@ -1151,6 +1156,22 @@ static __attribute__((noinline)) void dly_block(const int32_t *dly_in, int32_t *
 }
 #endif
 
+/* the buses a part sends to (bit 0 chorus, 1 delay, 2 reverb): the FX page's MIX above 0 on any part */
+static uint32_t fx_send_mask(void)
+{
+    uint32_t k, s = 0;
+    for (k = 0; k < NTRK; k++)
+        s |= (uint32_t)(trk[k].p[P_CHOR] > 0) | (uint32_t)(trk[k].p[P_DLY] > 0) << 1 | (uint32_t)(trk[k].p[P_REV] > 0) << 2;
+    return s;
+}
+#if FELUCCA_CPU2
+static uint32_t fxq_on;                                  /* fx_send_mask() when the queued block's sends were made (fx_queue):
+                                                          * the second core must not read the parts' values, mod.c moves them */
+#define FX_SENDS() fxq_on
+#else
+#define FX_SENDS() fx_send_mask()
+#endif
+
 /* process the three buses for one block; sends in, wet stereo-equal out. FMini-1: a bus whose send is 0 on every part
  * (the FX page's MIX at 0) and whose input is silent is OFF: nothing of it runs (its state cleared once), the CPU is free */
 static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t *rev_in, int32_t *wet,
@@ -1164,15 +1185,10 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     uint32_t cho_act = 1, dly_act = 1, rev_act = 1;
 #if FELUCCA_FMINI_ONLY
     {
-        uint32_t sc = 0, sd = 0, sr = 0, k;
-        for (k = 0; k < NTRK; k++) {
-            sc |= (uint32_t)(trk[k].p[P_CHOR] > 0);
-            sd |= (uint32_t)(trk[k].p[P_DLY] > 0);
-            sr |= (uint32_t)(trk[k].p[P_REV] > 0);
-        }
-        cho_act = sc || fx_any(cho_in, n);
-        dly_act = sd || fx_any(dly_in, n);
-        rev_act = sr || fx_any(rev_in, n);
+        uint32_t s = FX_SENDS();
+        cho_act = (s & 1u) || fx_any(cho_in, n);
+        dly_act = (s & 2u) || fx_any(dly_in, n);
+        rev_act = (s & 4u) || fx_any(rev_in, n);
     }
     /* FMini-1: RATE only changes the rate. The depth is a fixed, typical pitch swing (about +-16 cents, 25% above the first pick): the delay swing
      * A (samples, half the peak to peak) shrinks as the rate rises (pitch deviation = 2 pi f A / FS), at most +-3.1 ms */
@@ -1701,6 +1717,29 @@ static uint32_t mix_split(void)
     }
     return best;
 }
+
+/* (Ozy's FMini-1 Modded) the buses one block behind: a block's sends are queued (fx_queue, after the parts and the FX
+ * layer's perf_pre) and the next block runs them (fx_c1) into wet, dside and the reverb's side, which that block's
+ * master then adds. The second core runs them first in its job when it has one (voice.c c1_voices: an FMINI part),
+ * else this core after the parts. They touch only their own state and these copies, so they run beside the parts;
+ * the wet path is 0.73 ms (a block) later than the dry one, which no bus can be heard to change */
+static int32_t fxq_c[CTL], fxq_d[CTL], fxq_r[CTL];
+static uint32_t fxq_n = CTL;
+static void fx_c1(void)
+{
+    fx_buses(fxq_c, fxq_d, fxq_r, wet, fxq_n);
+}
+static void fx_queue(uint32_t n)
+{
+    uint32_t i;
+    for (i = 0; i < n; i++) {
+        fxq_c[i] = send_c[i];
+        fxq_d[i] = send_d[i];
+        fxq_r[i] = send_r[i];
+    }
+    fxq_n = n;
+    fxq_on = fx_send_mask();
+}
 #endif
 
 static void mix_block(int32_t *out, uint32_t n)
@@ -1714,8 +1753,11 @@ static void mix_block(int32_t *out, uint32_t n)
     perf = perf_begin(n);                               /* the FX hold layer at work (perform.c) */
 #if FELUCCA_CPU2
     uint32_t m = C1_ON() ? C1_SPLIT() & ((1u << NPART) - 1u) : 0u;
+    vs_fxq = 1;                                         /* the buses' queued block: for a core (fx_c1) */
+    vs_parts = (uint8_t)(m != 0);                       /* (FMini-1) the second core busy with parts: no voices to it
+                                                         * (voice.c vsplit_mask), on either core, until the wait below */
     if (m && !C1_RUN(c1_parts, m | n << 8))
-        m = 0;
+        m = vs_parts = 0;
     c1_blocks += m != 0;
     for (i = 0; i < NPART; i++)
         if (!(m >> i & 1u))
@@ -1724,6 +1766,7 @@ static void mix_block(int32_t *out, uint32_t n)
         const mixsum_t *sm = &mx[1];
         if (C1_WAIT())                                  /* it stopped answering (held from now on): its parts here */
             c1_parts(m | n << 8);
+        vs_parts = 0;
         for (i = 0; i < n; i++) {
             mix_l[i] += sm->l[i];
             mix_r[i] += sm->r[i];
@@ -1734,13 +1777,21 @@ static void mix_block(int32_t *out, uint32_t n)
     }
     for (i = 0; i < NPART; i++)                         /* the LFOs' blocks, part by part (voice.c) */
         track_lfo_end(&trk[i]);
+    if (vs_fxq) {                                       /* no job of the second core took the buses: here */
+        fx_c1();
+        vs_fxq = 0;
+    }
 #else
     for (i = 0; i < NPART; i++)                         /* (one core: as 1.6) */
         mix_part(&trk[i], n);
 #endif
     if (perf)
         perf_pre(mix_l, mix_r, send_d, send_r, n);
+#if FELUCCA_CPU2
+    fx_queue(n);                                        /* this block's sends: the buses run them in the next */
+#else
     fx_buses(send_c, send_d, send_r, wet, n);
+#endif
 #if FELUCCA_FMINI_ONLY
     if (hl.side || fx.ds_on)
         rev_side_mix(mix_l, mix_r, n);                  /* the reverb's, the delay's / chorus's stereo */

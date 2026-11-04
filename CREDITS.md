@@ -1,5 +1,10 @@
 # Credits
 
+**Ozy's FMini-1 Modded** is Ozy's ([@ozymaniacsom](https://github.com/ozymaniacsom)) fork of
+**[FMini-1](https://github.com/ruppert/fmini-1)** by Guilherme Ruppert: the voices and the effects on both cores, the CPU
+governor and the dark psychedelic look (the palette, the power-on picture, the site), see [CHANGES-OZY.md](CHANGES-OZY.md). Everything
+else is FMini-1's, and FMini-1 is based on Felucca; their credits follow, unchanged.
+
 Felucca is Leo Kuroshita's ([@kurogedelic](https://github.com/kurogedelic), [Hügelton Instruments](https://hugelton.com)). It uses and
 thanks the work below; each keeps its own licence (see [LICENSE](LICENSE), [LICENSING.md](LICENSING.md) and [LICENSES/](LICENSES/)).
 

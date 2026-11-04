@@ -122,6 +122,11 @@ static uint32_t trk_vmode(const track_t *t)
 }
 
 /* ------------------------------------------------- the shared voice budget --- */
+/* (Ozy's FMini-1 Modded) the CPU governor's cap on the budget (audio.c gov_half): the voices the render has time for,
+ * NVOICE when it has time for all. A note over it takes a voice as at a full budget (the oldest released, else the
+ * oldest held, never the bass); voices over it fade out, one a half (audio.c) */
+#define VCAP_MIN 4u
+static volatile uint8_t vcap = NVOICE;
 static uint32_t voices_busy(void)                       /* sounding voices of all parts (not the fading ones) */
 {
     uint32_t p, i, n = 0;
@@ -188,7 +193,7 @@ static int voice_room(track_t *t, int soft)
 {
     track_t *vp = 0;
     uint32_t k;
-    if (voices_busy() < NVOICE)
+    if (voices_busy() < vcap)
         return 1;
     k = voice_victim(t, soft, &vp);
     if (k == NVOICE)
@@ -227,7 +232,7 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
             return voice_reuse(t, &t->v[i]);
         nfree += !t->v[i].active;
     }
-    if (nfree && voices_busy() >= NVOICE) {
+    if (nfree && voices_busy() >= vcap) {
         track_t *vp = 0;
         uint32_t k = voice_victim(t, 0, &vp);
         if (k < np && vp == t)
@@ -692,6 +697,41 @@ static __attribute__((noinline)) void spread_sum(int32_t *out)
 }
 #endif
 
+/* a block's values every voice of a part renders with (track_render makes them; track_voices, on either core) */
+typedef struct {
+    const engine_t *e;
+    int32_t lfo, tune, tune_fine, bend16, bend_fine;
+    uint32_t fade, n;
+} vblk_t;
+static uint32_t track_voices(track_t *t, const vblk_t *c, int32_t *out, int32_t *sb, uint32_t mask);
+#if FELUCCA_CPU2
+#ifndef C1_RUN                                          /* (no second core here: the host; fx.c has the same) */
+#define C1_ON() 0
+#define C1_RUN(fn, arg) 0
+#define C1_WAIT() 0
+#endif
+static track_t *vs_t;                                   /* the part c1_voices renders a share of, and its block's values */
+static vblk_t vs_c;
+static int32_t vs_out[CTL], vs_spread[CTL];             /* its voices (SPREAD's left ones) */
+static uint32_t vs_nr, vs_blocks;                       /* the voices it rendered; blocks it took voices of (console) */
+static uint8_t vs_parts;                                /* the second core has parts this block (fx.c mix_block): no voices */
+static uint8_t vs_fxq;                                  /* fx.c: the buses' block waits for a core (mix_block sets it) */
+static uint8_t vs_fx1;                                  /* .. and this job of the second core runs it first */
+static int8_t vs_bias;                                  /* voices the second core takes over half of them (the balance) */
+static uint8_t vs_k;                                    /* the voices sounding in the part split last */
+static volatile uint32_t vs_t1;                         /* TIMER4 when the second core finished its job */
+#ifdef FM1_C1_T4
+#define VS_TICKS() FM1_C1_T4                            /* TIMER4, 24 MHz, either core reads it */
+#else
+#define VS_TICKS() 0u
+#endif
+#define VS_SLACK 480u                                   /* 20 us: closer than this, the cores are even */
+static void c1_voices(uint32_t mask);
+static void spread_add(int32_t *sb, const int32_t *s);
+static uint32_t vsplit_mask(const track_t *t, const engine_t *e, uint32_t *go);
+static void fx_c1(void);                                /* fx.c: the buses' queued block */
+#endif
+
 /* render one block of a part into out (cleared here); returns the voices rendered */
 /* Channel bend is live performance state, outside projects/presets. Q8 semitones. */
 static int32_t midi_bend_q8[NTRK], midi_bend_target[NTRK];
@@ -749,11 +789,66 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
 #endif
     if (e->block)                                       /* the engine's per-part work (WHEEL: bars, rotor) */
         e->block(t);
+    {
+        const vblk_t c = {e, lfo, tune, tune_fine, bend16, bend_fine, fade, n};
+#if FELUCCA_CPU2
+        uint32_t go, m1 = vsplit_mask(t, e, &go);
+        if (go) {
+            vs_t = t;                                   /* (what c1_voices reads: before the hand-over's csync) */
+            vs_c = c;
+            vs_fx1 = vs_fxq;
+        }
+        if (go && C1_RUN(c1_voices, m1)) {             /* (FMini-1) voices (and the buses) on the second core, at once */
+            uint32_t t0;
+            if (vs_fx1)
+                vs_fxq = 0;                             /* (the buses: the second core's this block) */
+            nr = track_voices(t, &c, out, SPREAD_BUF(t), ~m1);
+            t0 = VS_TICKS();
+            if (C1_WAIT()) {                            /* it stopped answering (held from now on): its voices here */
+                nr += track_voices(t, &c, out, SPREAD_BUF(t), m1);
+                vs_fxq = vs_fx1;                        /* .. and the buses (mix_block) */
+            } else {
+                /* the balance (Ozy's FMini-1 Modded): the core that finished first takes a voice more next block */
+                int32_t d = (int32_t)(vs_t1 - t0), lo = -(int32_t)(vs_k / 2u), hi = (int32_t)vs_k - (int32_t)(vs_k / 2u);
+                if (m1 && d > (int32_t)VS_SLACK && vs_bias > lo)   /* (the buses alone: nothing to move) */
+                    vs_bias--;                          /* this core waited: the second one had too much */
+                else if (m1 && d < -(int32_t)VS_SLACK && vs_bias < hi)
+                    vs_bias++;                          /* the second one finished first */
+                for (i = 0; i < n; i++)
+                    out[i] += vs_out[i];
+                if (T_SPREAD(t))
+                    spread_add(SPREAD_BUF(t), vs_spread);
+                nr += vs_nr;
+                vs_blocks++;
+            }
+        } else
+#endif
+            nr = track_voices(t, &c, out, SPREAD_BUF(t), 0xFFFFFFFFu);
+    }
+    if (T_SPREAD(t))
+        SPREAD_SUM(out, t);                /* out: every voice; spread_buf: the left ones */
+    if (fade) {
+        for (i = 0; i < 8u; i++)
+            t->p[P_E0 + i] = pe_new[i];
+        t->xf--;
+    }
+    return nr;
+}
+
+/* the voices of t in mask (bit i: voice i) into out (SPREAD's left ones into sb), with the block's values c; returns
+ * how many rendered. track_render's loop (FMini-1: its own function, so each core runs a share of the voices) */
+static uint32_t track_voices(track_t *t, const vblk_t *c, int32_t *out, int32_t *sb, uint32_t mask)
+{
+    const engine_t *e = c->e;
+    const int16_t *p = t->p;
+    const int32_t lfo = c->lfo, tune = c->tune, tune_fine = c->tune_fine, bend16 = c->bend16, bend_fine = c->bend_fine;
+    const uint32_t fade = c->fade, n = c->n;
+    uint32_t i, nr = 0;
     for (i = 0; i < NVOICE; i++) {
         voice_t *v = &t->v[i];
         vmod_t m;
         int32_t env, pitch;
-        if (!v->active)
+        if (!v->active || !(mask >> i & 1u))
             continue;
         {
             env = env_tick(t, v);
@@ -805,15 +900,63 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         m.shape = (64 << 8) + ((lfo * p[P_LD_SHP]) >> 7) + ((m.envq15 * p[P_ED_SHP]) >> 7);
         if (MOD(t).on)                                  /* the modulation matrix (mod.c) */
             mod_voice(t, v, &m, v->fine + tune_fine + bend_fine);
-        e->render(t, v, T_SPREAD(t) > v->side ? SPREAD_BUF(t) : out, n, &m);   /* (SPREAD: the left ones) */
+        e->render(t, v, T_SPREAD(t) > v->side ? sb : out, n, &m);   /* (SPREAD: the left ones) */
         nr++;
-    }
-    if (T_SPREAD(t))
-        SPREAD_SUM(out, t);                /* out: every voice; spread_buf: the left ones */
-    if (fade) {
-        for (i = 0; i < 8u; i++)
-            t->p[P_E0 + i] = pe_new[i];
-        t->xf--;
     }
     return nr;
 }
+
+#if FELUCCA_CPU2
+/* (FMini-1) the second core's share of a part's voices: the part split (fx.c mix_block) hands it whole parts, and FMini-1
+ * plays every voice on track 1 (tracks 2-4 muted), so with 12 voices it idled while the first core ran out of time (CPU
+ * High, voices cut). Now a part with VS_MIN or more voices sounding, rendered by the first core while the second has
+ * no part of its own (vs_parts), gives every other one of them to the second core: c1_voices renders them into vs_out
+ * (vs_spread) with the block's values while track_voices renders the rest, then track_render adds them in. Each voice's
+ * render touches its own voice_t only, and the part's values are read (made before, put back after); FMINI's VCO drift
+ * draws from the part's noise generator (eng_fmini.c fmini_nst) on both cores, which at worst repeats a draw. FMINI
+ * only (the engine of this fork; the others' render was never checked for it). A core that stops answering: its
+ * voices on the first, as the part split does (one glitch, then one core).
+ * (Ozy's FMini-1 Modded) The second core also runs the effect buses, one block behind (fx.c fx_queue: the last block's
+ * sends), before its voices; and the share is not half but what evens the cores out: each block the core that
+ * finished first (TIMER4, VS_SLACK) takes one voice more of the next (vs_bias) */
+#define VS_MIN 2u
+static void c1_voices(uint32_t mask)                    /* the second core */
+{
+    uint32_t i;
+    track_t *t = vs_t;
+    if (vs_fx1)
+        fx_c1();                                        /* the buses (fx.c): the last block's sends -> wet */
+    for (i = 0; i < CTL; i++)
+        vs_out[i] = vs_spread[i] = 0;
+    vs_nr = mask ? track_voices(t, &vs_c, vs_out, vs_spread, mask) : 0u;
+    vs_t1 = VS_TICKS();
+}
+static void spread_add(int32_t *sb, const int32_t *s)
+{
+    uint32_t i;
+    for (i = 0; i < CTL; i++)
+        sb[i] += s[i];
+}
+/* -> the second core's voices, 0: none; *go: it has a job (voices, or the buses' block) */
+static uint32_t vsplit_mask(const track_t *t, const engine_t *e, uint32_t *go)
+{
+    uint32_t i, k = 0, m = 0;
+    int32_t want;
+    *go = 0;
+    if (!C1_ON() || vs_parts || e != &ENG_FMINI)
+        return 0;
+    for (i = 0; i < NVOICE; i++)
+        k += t->v[i].active;
+    if (k >= VS_MIN) {
+        vs_k = (uint8_t)k;
+        want = clamp((int32_t)(k / 2u) + vs_bias, 0, (int32_t)k);
+        for (i = 0; i < NVOICE && want > 0; i++)
+            if (t->v[i].active) {
+                m |= 1u << i;                           /* (the first ones sounding) */
+                want--;
+            }
+    }
+    *go = m || vs_fxq;
+    return m;
+}
+#endif

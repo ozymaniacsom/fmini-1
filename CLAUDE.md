@@ -1,7 +1,13 @@
 # CLAUDE.md
 
+**This repository is Ozy's FMini-1 Modded**, Ozy's fork of FMini-1: <https://github.com/ozymaniacsom/fmini-1>, site and
+installer <https://ozymaniacsom.github.io/fmini-1/>. Its changes are listed in [CHANGES-OZY.md](CHANGES-OZY.md): add every new
+one there (with its date and files). The owner here is Ozy, who writes English: answer in English. Ozy uploads files through
+the GitHub web interface and builds with the "Installer" workflow (no local toolchain): hand over changed files in their
+repository folders. The rest of this file is FMini-1's and applies as written, with "the owner" read as Ozy.
+
 FMini-1: Minimoog-style firmware for the M-VAVE FM-1 (a fork of [Felucca](https://github.com/hugelton/Felucca), GPL-3.0-only,
-by Leo Kuroshita). Author of the fork: Guilherme Ruppert. Repository: <https://github.com/ruppert/fmini-1>. Site, installer,
+by Leo Kuroshita). Author of FMini-1: Guilherme Ruppert. Repository: <https://github.com/ruppert/fmini-1>. Site, installer,
 patch editor and browser emulator: <https://ruppert.github.io/fmini-1/>.
 
 The long guide is [DEVELOPING.md](DEVELOPING.md) (architecture, the filter, presets, editor, tests, release, and how to start a
@@ -10,7 +16,8 @@ toolchain setup.
 
 ## Working with the owner
 
-- The owner writes Portuguese (pt-BR): answer in Portuguese. Code, comments, commit messages and documents are English.
+- (FMini-1's own repository: the owner writes Portuguese (pt-BR), answer in Portuguese. In this fork: English, above.) Code,
+  comments, commit messages and documents are English.
 - Nothing here has been tested on a real FM-1 unless the owner says so. Say it in the closing message of any firmware change.
 - When something ships, remind the owner of two things: the site is published by the "Installer" GitHub Actions workflow a few
   minutes after the push to `main`; and GitHub Releases are created by the owner by hand (the session's API returns 403).
