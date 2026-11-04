@@ -149,8 +149,10 @@ The model and its numbers are in `tools/fmini_filter.py` (read its header); the 
   `gov_hot`. The FMINI release ends at -60 dB (`env_tick`). `fmini_render`'s ladder loop is split LP / HP, its ramp
   in registers (`fmini_amp`) and its tanh from RAM (`fmini_th`, `fmini_tanh`): the same numbers as dsp.c's.
 - **RAM loops (Ozy's).** `RAMFAST` (`felucca.c`) puts a function in `.fast_text` (`app.ld`, in RAMTEXT between `.ram_text` and
-  `.c1_text`), copied at boot (`main.c`) and placed in the image by `build.py`. For the per-sample loops only (the FMINI
-  voice, the buses); never for code that runs with the flash off (`.ram_text`, which may not call). RAMTEXT is 24 KiB.
+  `.c1_text`), copied at boot (`main.c`) and placed in the image by `build.py`. Only for code that calls nothing: RAM and flash are
+  beyond a call's reach both ways (`FL_FAR`), so helpers must be forced inline, no dsp.c helper, no 64-bit division, no
+  `switch`; call it through a volatile pointer (`fmini_render` -> `fmini_ladder`). Never for code that runs with the flash off
+  (`.ram_text`). RAMTEXT is 24 KiB.
 - **The look (Ozy's FMini-1 Modded).** The FMINI screens' palette is the `FA_*` colours and the literal `FA_RGB` values in
   `fmini_app.c` (dark: luminous teal values, ultraviolet labels, near-black panels, dark gold buttons, glowing conduits for
   the side cheeks in `fa_scene`). The power-on picture is `fmini_splash.h` (240 x 240, a 256-colour palette and an index a

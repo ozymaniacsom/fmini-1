@@ -750,7 +750,6 @@ static int32_t dg_bend_ch, dg_on_ch;               /* MIDI channel (1..16) of th
 static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
 {
     const engine_t *e = ENGINES[t->engine];
-    const int16_t *p = t->p;
     uint32_t i;
     int32_t lfo = mulq15(t->lfo_val, t->lfo_fade);
     /* TUNE in cents: whole 1/16 semitones in the pitch, the rest as a fine factor (no dead zone) */

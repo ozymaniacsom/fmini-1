@@ -299,7 +299,7 @@ static inline int32_t fmini_shark(uint32_t ph)            /* a triangle that ris
 }
 
 /* one oscillator of the mix: mix[i] += its sample at level g (Q15); a loop per wave */
-static RAMFAST void fmini_wave(uint32_t w, uint32_t *php, uint32_t inc, int32_t g, int32_t *mix, uint32_t n)
+static void fmini_wave(uint32_t w, uint32_t *php, uint32_t inc, int32_t g, int32_t *mix, uint32_t n)
 {
     uint32_t ph = *php, i;
     switch (w) {
@@ -365,7 +365,7 @@ static void fmini_note_on(track_t *t, voice_t *v)
 }
 
 /* the contour, once a block: stage 1 attack, 2 decay to the sustain, 3 release (the DECAY time); level Q23 */
-static RAMFAST int32_t fmini_contour(const int16_t *p, voice_t *v)
+static int32_t fmini_contour(const int16_t *p, voice_t *v)
 {
     uint32_t st = (uint32_t)v->s[7] >> 24;
     int32_t e = v->s[7] & 0xFFFFFF, sus = (int32_t)p[P_E5] << 16, k = (int32_t)ENV_EXP[p[P_E4] & 127];
@@ -396,7 +396,7 @@ static RAMFAST int32_t fmini_contour(const int16_t *p, voice_t *v)
 }
 
 /* (Ozy's) dsp.c softclip, the same numbers, from fmini_th (RAM) */
-static inline int32_t fmini_tanh(int32_t x)
+static inline __attribute__((always_inline)) int32_t fmini_tanh(int32_t x)
 {
     int32_t a = x < 0 ? -x : x, i = a >> 8, y;
     if (i >= 256)
@@ -408,18 +408,71 @@ static inline int32_t fmini_tanh(int32_t x)
 
 /* (Ozy's) dsp.c voice_amp, the same numbers, with the block's ramp (amp_at) in registers: m->amp0 and m->amp1 are
  * otherwise loaded again after every store to out[] (they could alias) */
-static inline int32_t fmini_amp(int32_t s, int32_t a0, int32_t da, uint32_t i)
+static inline __attribute__((always_inline)) int32_t fmini_amp(int32_t s, int32_t a0, int32_t da, uint32_t i)
 {
     int32_t x = da * (int32_t)i;
-    return mulq15(mulq15(s, a0 + ((x + ((x >> 31) & (CTL - 1))) >> CTL_LOG2)), VOICE_FS);
+    return (((s * (a0 + ((x + ((x >> 31) & (CTL - 1))) >> CTL_LOG2))) >> 15) * VOICE_FS) >> 15;   /* (mulq15 twice, written out) */
 }
 
 /* a * k / 65536 rounded to the nearest (mulq16 floors: four stages of it leave a bias that a quiet, low ladder cannot sing against) */
-static inline int32_t fmini_mulr(int32_t a, uint32_t k)
+static inline __attribute__((always_inline)) int32_t fmini_mulr(int32_t a, uint32_t k)
 {
     return (int32_t)(((a >> 16) * (int32_t)k) + (int32_t)(((uint32_t)(a & 0xFFFF) * k + 32768u) >> 16));
 }
 
+/* (Ozy's) the ladder's sample loop, from RAM (RAMFAST): fmini_render's per-sample work, the most of a voice's cost. RAM
+ * code cannot call into the flash (beyond the 23-bit call reach, hal/fm1_flash.h), so it calls nothing: its helpers are
+ * forced inline (fmini_tanh, fmini_mulr, fmini_amp) and dsp.c's are not used; fmini_render calls it through a pointer.
+ * One loop for LP and one for HP: the same numbers as one loop with the choice inside, LP keeps fewer values alive */
+typedef struct {
+    int32_t s0, s1, s2, s3, sx;                                  /* the stages' and the lag pole's states, in and out */
+    int32_t c0, c1, c2, c3, G16, gx16, inv14, kinv12, trim12;   /* the block's coefficients (fmini_render) */
+    int32_t a0, da;                                              /* the amplitude ramp (vmod_t amp0, amp1 - amp0) */
+    uint32_t hp, n;
+} fmini_lad_t;
+#define FMINI_LADDER()                                                                                                   \
+        S = (c0 * ((s0 + 128) >> 8) + c1 * ((s1 + 128) >> 8) + c2 * ((s2 + 128) >> 8) + c3 * ((s3 + 128) >> 8)) >> 14;   \
+        fbc = sx + fmini_mulr((S << 8) - sx, (uint32_t)gx16);                                                            \
+        u = ((x * inv14) >> 14) - ((kinv12 * ((fbc + 128) >> 8)) >> 12);                                                \
+        xin = fmini_tanh(u) << 8;                                                                                        \
+        v1 = fmini_mulr(xin - s0, (uint32_t)G16);                                                                        \
+        y1 = v1 + s0;                                                                                                    \
+        s0 = y1 + v1;                                                                                                    \
+        v2 = fmini_mulr((fmini_tanh((y1 + 128) >> 8) << 8) - s1, (uint32_t)G16);                                         \
+        y2 = v2 + s1;                                                                                                    \
+        s1 = y2 + v2;                                                                                                    \
+        v3 = fmini_mulr((fmini_tanh((y2 + 128) >> 8) << 8) - s2, (uint32_t)G16);                                         \
+        y3 = v3 + s2;                                                                                                    \
+        s2 = y3 + v3;                                                                                                    \
+        v4 = fmini_mulr((fmini_tanh((y3 + 128) >> 8) << 8) - s3, (uint32_t)G16);                                         \
+        y4 = v4 + s3;                                                                                                    \
+        s3 = y4 + v4;                                                                                                    \
+        w = fmini_mulr(y4 - sx, (uint32_t)gx16);                                                                         \
+        sx += w + w
+static RAMFAST __attribute__((noinline, used)) void fmini_ladder(fmini_lad_t *L, const int32_t *mix, int32_t *out)
+{
+    int32_t s0 = L->s0, s1 = L->s1, s2 = L->s2, s3 = L->s3, sx = L->sx;
+    const int32_t c0 = L->c0, c1 = L->c1, c2 = L->c2, c3 = L->c3, G16 = L->G16, gx16 = L->gx16;
+    const int32_t inv14 = L->inv14, kinv12 = L->kinv12, trim12 = L->trim12, a0 = L->a0, da = L->da;
+    const uint32_t n = L->n;
+    uint32_t i;
+    if (!L->hp)
+        for (i = 0; i < n; i++) {
+            int32_t x = fmini_tanh(mix[i]), S, fbc, u, xin, v1, v2, v3, v4, y1, y2, y3, y4, w;   /* the mixer overloads softly */
+            FMINI_LADDER();
+            out[i] += fmini_amp((((y4 + 128) >> 8) * trim12) >> 12, a0, da, i) << 1;
+        }
+    else
+        for (i = 0; i < n; i++) {
+            int32_t x = fmini_tanh(mix[i]), S, fbc, u, xin, v1, v2, v3, v4, y1, y2, y3, y4, w, o;
+            FMINI_LADDER();
+            /* HP: the stages are one-pole lows H; (1 - H)^4 = 1 - 4H + 6H^2 - 4H^3 + H^4 on the stages' outputs (linear, the states as they are) */
+            o = xin - 4 * y1 + 6 * y2 - 4 * y3 + y4;
+            out[i] += fmini_amp((((o + 128) >> 8) * trim12) >> 12, a0, da, i) << 1;
+        }
+    L->s0 = s0, L->s1 = s1, L->s2 = s2, L->s3 = s3, L->sx = sx;
+}
+#undef FMINI_LADDER
 /* The filter, after the Minimoog's (tools/fmini_filter.py has the laws and the reasoning, the CA-72 project's calibration the
  * measurements): four equal one-pole stages, each a differential pair (tanh in front), the last stage's output fed back to
  * the first through a lag pole (the emphasis network), solved without a delay in the loop (zero-delay feedback: each stage
@@ -430,7 +483,7 @@ static inline int32_t fmini_mulr(int32_t a, uint32_t k)
  * the contour up to 5 octaves; EMPHASIS is the dial 0 .. 10 (FMINI_K) with the hardware's passband loss (FMINI_TRIM). With
  * the mixer silent and EMPHASIS past 8 the ladder sings a sine at the singing pitch, 1 V/oct over the keyboard.
  * Q formats: signals +-32768 (tanh(1)); the states Q8 (a quiet ladder at a low cutoff moves less than a LSB a sample); G Q16; the prediction's coefficients c Q14; k Q12. */
-static RAMFAST void fmini_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
+static void fmini_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
     const int16_t *p = t->p;
     const uint8_t *g = fmini_eff[(uint32_t)(t - trk) % NTRK].p;
@@ -536,45 +589,17 @@ static RAMFAST void fmini_render(track_t *t, voice_t *v, int32_t *out, uint32_t 
         }
     }
 
-    /* (Ozy's) one loop for LP and one for HP, the same numbers as one loop with the choice inside: LP keeps fewer values
-     * alive a sample; the ramp in registers (fmini_amp), tanh from RAM (fmini_tanh) */
-#define FMINI_LADDER()                                                                                                   \
-        S = (c0 * ((s0 + 128) >> 8) + c1 * ((s1 + 128) >> 8) + c2 * ((s2 + 128) >> 8) + c3 * ((s3 + 128) >> 8)) >> 14;   \
-        fbc = sx + fmini_mulr((S << 8) - sx, (uint32_t)gx16);                                                            \
-        u = ((x * inv14) >> 14) - ((kinv12 * ((fbc + 128) >> 8)) >> 12);                                                \
-        xin = fmini_tanh(u) << 8;                                                                                        \
-        v1 = fmini_mulr(xin - s0, (uint32_t)G16);                                                                        \
-        y1 = v1 + s0;                                                                                                    \
-        s0 = y1 + v1;                                                                                                    \
-        v2 = fmini_mulr((fmini_tanh((y1 + 128) >> 8) << 8) - s1, (uint32_t)G16);                                         \
-        y2 = v2 + s1;                                                                                                    \
-        s1 = y2 + v2;                                                                                                    \
-        v3 = fmini_mulr((fmini_tanh((y2 + 128) >> 8) << 8) - s2, (uint32_t)G16);                                         \
-        y3 = v3 + s2;                                                                                                    \
-        s2 = y3 + v3;                                                                                                    \
-        v4 = fmini_mulr((fmini_tanh((y3 + 128) >> 8) << 8) - s3, (uint32_t)G16);                                         \
-        y4 = v4 + s3;                                                                                                    \
-        s3 = y4 + v4;                                                                                                    \
-        w = fmini_mulr(y4 - sx, (uint32_t)gx16);                                                                         \
-        sx += w + w
-    {
-        const int32_t a0 = m->amp0, da = m->amp1 - m->amp0;
-        if (!hp)
-            for (i = 0; i < n; i++) {
-                int32_t x = fmini_tanh(mix[i]), S, fbc, u, xin, v1, v2, v3, v4, y1, y2, y3, y4, w;   /* the mixer overloads softly */
-                FMINI_LADDER();
-                out[i] += fmini_amp((((y4 + 128) >> 8) * trim12) >> 12, a0, da, i) << 1;
-            }
-        else
-            for (i = 0; i < n; i++) {
-                int32_t x = fmini_tanh(mix[i]), S, fbc, u, xin, v1, v2, v3, v4, y1, y2, y3, y4, w, o;
-                FMINI_LADDER();
-                /* HP: the stages are one-pole lows H; (1 - H)^4 = 1 - 4H + 6H^2 - 4H^3 + H^4 on the stages' outputs (linear, the states as they are) */
-                o = xin - 4 * y1 + 6 * y2 - 4 * y3 + y4;
-                out[i] += fmini_amp((((o + 128) >> 8) * trim12) >> 12, a0, da, i) << 1;
-            }
+    {   /* (Ozy's) the sample loop: fmini_ladder, from RAM (above) */
+        fmini_lad_t L;
+        void (*volatile lad)(fmini_lad_t *, const int32_t *, int32_t *) = fmini_ladder;   /* (RAMFAST: called through a
+                                                                                           * pointer, beyond a call's reach) */
+        L.s0 = s0, L.s1 = s1, L.s2 = s2, L.s3 = s3, L.sx = sx;
+        L.c0 = c0, L.c1 = c1, L.c2 = c2, L.c3 = c3, L.G16 = G16, L.gx16 = gx16;
+        L.inv14 = inv14, L.kinv12 = kinv12, L.trim12 = trim12;
+        L.a0 = m->amp0, L.da = m->amp1 - m->amp0, L.hp = hp, L.n = n;
+        lad(&L, mix, out);
+        s0 = L.s0, s1 = L.s1, s2 = L.s2, s3 = L.s3, sx = L.sx;
     }
-#undef FMINI_LADDER
     v->ph[0] = ph0;
     v->ph[1] = ph1;
     v->ph[2] = ph2;

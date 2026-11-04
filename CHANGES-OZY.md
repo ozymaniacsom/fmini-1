@@ -15,8 +15,8 @@ runs its code from the flash through a cache, and with the effects on the second
 loops through that cache at once. The loops that run every sample now run from RAM, copied there at boot, as the flash
 driver's code (`.ram_text`) and the second core's waiting loop (`.c1_text`) already are.
 
-- **In RAM:** `fmini_render`, `fmini_wave` and `fmini_contour` (the voices), `cho_block`, `dly_block`, `rev_room`,
-  `rev_spring`, `spring_one`, `rev_hall` and `rev_plate` (the buses), marked `RAMFAST` (`felucca.c`: section
+- **In RAM:** `fmini_ladder`, the filter's sample loop, the most of a voice's cost (it runs once a voice, up to 12 at
+  once), taken out of `fmini_render` and marked `RAMFAST` (`felucca.c`: section
   `.fast_text`; an empty mark on the host and in the browser, `core.h`).
 - **Where:** `app.ld` places `.fast_text` between `.ram_text` and `.c1_text`, in the RAM code region (0x01C00000, 24 KiB, of
   which the flash driver and the waiting loop used about 4), so the guard's one RAM code window (`hal/fm1_guard.h`)
@@ -25,8 +25,12 @@ driver's code (`.ram_text`) and the second core's waiting loop (`.c1_text`) alre
 - **Build:** `tools/build.py` puts it in the image at its load address. It is not checked as `.ram_text` is (no calls),
   because it calls into the flash. Nothing runs it with the flash off: the flash is written with interrupts off.
 
-The sound is the same: the same code, somewhere else. If it does not fit, the link fails with "region RAMTEXT
-overflowed" (then fewer functions get `RAMFAST`).
+The sound is the same, bit for bit: the same arithmetic, somewhere else. RAM code cannot call into the flash, nor the
+flash into RAM directly: the two are beyond the 23-bit reach of a call (`hal/fm1_flash.h`, `FL_FAR`). So the kernel calls
+nothing (its helpers `fmini_tanh`, `fmini_mulr` and `fmini_amp` are forced inline, `fmini_amp` with `mulq15` written
+out), and `fmini_render` calls it through a volatile pointer. The first try put whole functions in RAM (the voice's and
+the buses': chorus, delay, the reverbs). The link failed: `cho_block` called `clamp` in the flash (`relocation truncated
+to fit: R_PI32V2_LONG_JUMP_23M2`). The oscillators, the envelope and the buses stay in the flash.
 
 | File | Change |
 | --- | --- |
@@ -34,8 +38,8 @@ overflowed" (then fewer functions get `RAMFAST`).
 | `firmware/hal/fm1_guard.h` | The one-core build's RAM code window ends at `_ft_end` |
 | `firmware/src/felucca.c`, `firmware/src/core.h` | `RAMFAST` (the host: empty) |
 | `firmware/src/main.c` | The copy at boot |
-| `firmware/src/eng_fmini.c`, `firmware/src/fx.c` | `RAMFAST` on the loops above |
-| `firmware/src/voice.c` | `VS_TICKS` is 0 on the host (no TIMER4 there) |
+| `firmware/src/eng_fmini.c` | `RAMFAST` on the loops above |
+| `firmware/src/voice.c` | `VS_TICKS` is 0 on the host (no TIMER4 there); `track_render`'s unused `p` gone |
 | `tools/build.py` | `fasttext.bin` into the image |
 | `web/emu/felucca_web.c` | The three new link symbols, for the browser build |
 ## 2026-11-04 (later): the governor made gentle, the voice render faster
