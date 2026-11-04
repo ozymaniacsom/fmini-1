@@ -1723,7 +1723,9 @@ static uint32_t mix_split(void)
  * master then adds. The second core runs them first in its job when it has one (voice.c c1_voices: an FMINI part),
  * else this core after the parts. They touch only their own state and these copies, so they run beside the parts;
  * the wet path is 0.73 ms (a block) later than the dry one, which no bus can be heard to change */
-static int32_t fxq_c[CTL], fxq_d[CTL], fxq_r[CTL];
+static int32_t fxq_c[CTL] __attribute__((section(".pool")));   /* (the pool: RAM's headroom, tools/build.py) */
+static int32_t fxq_d[CTL] __attribute__((section(".pool")));
+static int32_t fxq_r[CTL] __attribute__((section(".pool")));
 static uint32_t fxq_n = CTL;
 static void fx_c1(void)
 {

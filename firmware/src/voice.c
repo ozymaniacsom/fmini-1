@@ -712,7 +712,8 @@ static uint32_t track_voices(track_t *t, const vblk_t *c, int32_t *out, int32_t 
 #endif
 static track_t *vs_t;                                   /* the part c1_voices renders a share of, and its block's values */
 static vblk_t vs_c;
-static int32_t vs_out[CTL], vs_spread[CTL];             /* its voices (SPREAD's left ones) */
+static int32_t vs_out[CTL] __attribute__((section(".pool")));      /* its voices (in the pool: RAM's headroom) */
+static int32_t vs_spread[CTL] __attribute__((section(".pool")));   /* (SPREAD's left ones) */
 static uint32_t vs_nr, vs_blocks;                       /* the voices it rendered; blocks it took voices of (console) */
 static uint8_t vs_parts;                                /* the second core has parts this block (fx.c mix_block): no voices */
 static uint8_t vs_fxq;                                  /* fx.c: the buses' block waits for a core (mix_block sets it) */
@@ -720,11 +721,7 @@ static uint8_t vs_fx1;                                  /* .. and this job of th
 static int8_t vs_bias;                                  /* voices the second core takes over half of them (the balance) */
 static uint8_t vs_k;                                    /* the voices sounding in the part split last */
 static volatile uint32_t vs_t1;                         /* TIMER4 when the second core finished its job */
-#ifdef FM1_C1_T4
-#define VS_TICKS() FM1_C1_T4                            /* TIMER4, 24 MHz, either core reads it */
-#else
-#define VS_TICKS() 0u
-#endif
+#define VS_TICKS() fm1_ticks()                          /* TIMER4, 24 MHz (hal/fm1_time.h): either core reads it */
 #define VS_SLACK 480u                                   /* 20 us: closer than this, the cores are even */
 static void c1_voices(uint32_t mask);
 static void spread_add(int32_t *sb, const int32_t *s);
