@@ -340,7 +340,7 @@ static const uint16_t REV_AP_R[2] = {579, 464};
 _Static_assert(1139 + 1211 + 1300 + 1379 + 579 + 464 <= RX_LEN, "ROOM's right channel in rev_x");
 /* ROOM (type 0): Freeverb's stereo form: the send into 4 damped combs + 2 allpasses a side; left and right differ by the +23 samples
  * (different resonances: decorrelated). The wet bus gets (left + right) / 2, rev_side (left - right) / 2 */
-static __attribute__((noinline)) void rev_room(const int32_t *rev_in, int32_t *out, uint32_t n)
+static RAMFAST __attribute__((noinline)) void rev_room(const int32_t *rev_in, int32_t *out, uint32_t n)
 {
     uint32_t i, k;
     int32_t size = 25000 + song.g[G_RSIZE] * 50, damp = 32767 - RDAMP * 200;
@@ -385,7 +385,7 @@ static __attribute__((noinline)) void rev_room(const int32_t *rev_in, int32_t *o
 }
 #else
 /* ROOM (G_RTYPE 0): 4 damped combs + 2 allpasses (Freeverb-like, mono), added to out */
-static __attribute__((noinline)) void rev_room(const int32_t *rev_in, int32_t *out, uint32_t n)
+static RAMFAST __attribute__((noinline)) void rev_room(const int32_t *rev_in, int32_t *out, uint32_t n)
 {
     uint32_t i, k;
     int32_t size = 25000 + song.g[G_RSIZE] * 50, damp = 32767 - RDAMP * 200;
@@ -433,7 +433,7 @@ static inline int32_t rlp_run(int32_t *st, int32_t x)
 }
 /* SPRING (see the top), stereo: a tank has two springs: the left output is the first (the loop in rev_comb, as before), the right a second, 19 %
  * longer one (its loop in rev_x, its own wobble): the two sound apart. spring_one: one spring's block into dst (assigned) */
-static __attribute__((noinline)) void spring_one(int16_t *ln, int32_t *ap, uint16_t *spw, int32_t *splp, int32_t *sphp, int32_t *sphe,
+static RAMFAST __attribute__((noinline)) void spring_one(int16_t *ln, int32_t *ap, uint16_t *spw, int32_t *splp, int32_t *sphp, int32_t *sphe,
                                                  int32_t *spsz, uint32_t *spph, uint32_t lfo, uint32_t lenmul, const int32_t *rev_in,
                                                  int32_t *dst, uint32_t n)
 {
@@ -476,7 +476,7 @@ static __attribute__((noinline)) void spring_one(int16_t *ln, int32_t *ap, uint1
     }
 }
 _Static_assert(SP_LEN + 4u * (SP_N + 1u) * 2u <= RX_LEN, "SPRING's second spring in rev_x");
-static __attribute__((noinline)) void rev_spring(const int32_t *rev_in, int32_t *out, uint32_t n)
+static RAMFAST __attribute__((noinline)) void rev_spring(const int32_t *rev_in, int32_t *out, uint32_t n)
 {
     int32_t a[CTL], b[CTL];
     uint32_t i;
@@ -491,7 +491,7 @@ static __attribute__((noinline)) void rev_spring(const int32_t *rev_in, int32_t 
 }
 #else
 /* SPRING (see the top), added to out */
-static __attribute__((noinline)) void rev_spring(const int32_t *rev_in, int32_t *out, uint32_t n)
+static RAMFAST __attribute__((noinline)) void rev_spring(const int32_t *rev_in, int32_t *out, uint32_t n)
 {
     uint32_t i, k, s = (uint32_t)song.g[G_RSIZE];
     int32_t g = 19661 + (int32_t)s * 85;                /* the loop's gain: 0.6 .. 0.93 */
@@ -651,7 +651,7 @@ static inline void hall_send(const int32_t *rev_in)
  * sample, low cut, diffusers (hl.bx); the lines' ends at their drifting taps, low-passed, scaled (hl.y); the
  * outputs and the matrix; back into the lines; the outputs back to 44.1 kHz. */
 #define HL_LFO ((uint32_t)(0.37 * CTL / FS * 4294967296.0))   /* the drift: 0.37 Hz (even lines), 0.74 Hz (odd) */
-static __attribute__((noinline)) void rev_hall(const int32_t *rev_in, int32_t *out, uint32_t n)
+static RAMFAST __attribute__((noinline)) void rev_hall(const int32_t *rev_in, int32_t *out, uint32_t n)
 {
     int16_t *b = rev_comb, *a = rev_ap;
     uint32_t i, k, s, m, d;
@@ -785,7 +785,7 @@ static inline int32_t pl_tap(const int16_t *b, uint32_t ix, uint32_t len, uint32
 {
     return b[ix >= t ? ix - t : ix + len - t];
 }
-static __attribute__((noinline)) void rev_plate(const int32_t *rev_in, int32_t *out, uint32_t n)
+static RAMFAST __attribute__((noinline)) void rev_plate(const int32_t *rev_in, int32_t *out, uint32_t n)
 {
     int16_t *bf[PL_N];
     uint32_t i, k, o = 0;
@@ -1011,7 +1011,7 @@ static inline int32_t cho_tap(uint32_t wp, int32_t r)
     int32_t f = r & 255, c0 = cho_buf[(wp - ri) & (CHO_LEN - 1u)], c1 = cho_buf[(wp - ri - 1u) & (CHO_LEN - 1u)];
     return (c0 + (((c1 - c0) * f) >> 8)) << 1;
 }
-static __attribute__((noinline)) void cho_block(const int32_t *cho_in, int32_t *wet, uint32_t n, int32_t cdepth, uint32_t cinc)
+static RAMFAST __attribute__((noinline)) void cho_block(const int32_t *cho_in, int32_t *wet, uint32_t n, int32_t cdepth, uint32_t cinc)
 {
     uint32_t i, ty = (uint32_t)song.g[G_ENGGO] % 3u;
     int32_t d = ty == 0u ? (cdepth * 3) >> 2 : ty == 1u ? cdepth >> 1 : (cdepth * 5) >> 3, kc = ty == 0u ? 14500 : ty == 1u ? 21500 : 26000;
@@ -1069,7 +1069,7 @@ static inline void dly_put(int32_t v)                       /* the loop's input 
  *   at T/4 T/2 3T/4 T spread over the two sides, the feedback from the last. REVERSE: two heads read the last T backwards through triangles (a
  *   chunk of T played backwards, crossfaded), the feedback takes the reversed sound (the next repeat is forward again). P-PONG and REVERSE
  *   reach 743 ms (the line's 65 k samples hold 2T). */
-static __attribute__((noinline)) void dly_block(const int32_t *dly_in, int32_t *wet, uint32_t n, int32_t fb)
+static RAMFAST __attribute__((noinline)) void dly_block(const int32_t *dly_in, int32_t *wet, uint32_t n, int32_t fb)
 {
     uint32_t i, ty = dly_kind(), w;
     int32_t dmix = song.g[G_DMIX] * 258, tgt = (int32_t)delay_samples() << 8, st = tgt - fx.dl_q, slap;

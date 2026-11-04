@@ -727,7 +727,11 @@ static uint8_t vs_fx1;                                  /* .. and this job of th
 static int8_t vs_bias;                                  /* voices the second core takes over half of them (the balance) */
 static uint8_t vs_k;                                    /* the voices sounding in the part split last */
 static volatile uint32_t vs_t1;                         /* TIMER4 when the second core finished its job */
+#ifdef FM1_TICKS_PER_US
 #define VS_TICKS() fm1_ticks()                          /* TIMER4, 24 MHz (hal/fm1_time.h): either core reads it */
+#else
+#define VS_TICKS() 0u                                   /* (the host: no second core, no balance) */
+#endif
 #define VS_SLACK 480u                                   /* 20 us: closer than this, the cores are even */
 static void c1_voices(uint32_t mask);
 static void spread_add(int32_t *sb, const int32_t *s);

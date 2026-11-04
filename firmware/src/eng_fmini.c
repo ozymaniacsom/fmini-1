@@ -299,7 +299,7 @@ static inline int32_t fmini_shark(uint32_t ph)            /* a triangle that ris
 }
 
 /* one oscillator of the mix: mix[i] += its sample at level g (Q15); a loop per wave */
-static void fmini_wave(uint32_t w, uint32_t *php, uint32_t inc, int32_t g, int32_t *mix, uint32_t n)
+static RAMFAST void fmini_wave(uint32_t w, uint32_t *php, uint32_t inc, int32_t g, int32_t *mix, uint32_t n)
 {
     uint32_t ph = *php, i;
     switch (w) {
@@ -365,7 +365,7 @@ static void fmini_note_on(track_t *t, voice_t *v)
 }
 
 /* the contour, once a block: stage 1 attack, 2 decay to the sustain, 3 release (the DECAY time); level Q23 */
-static int32_t fmini_contour(const int16_t *p, voice_t *v)
+static RAMFAST int32_t fmini_contour(const int16_t *p, voice_t *v)
 {
     uint32_t st = (uint32_t)v->s[7] >> 24;
     int32_t e = v->s[7] & 0xFFFFFF, sus = (int32_t)p[P_E5] << 16, k = (int32_t)ENV_EXP[p[P_E4] & 127];
@@ -430,7 +430,7 @@ static inline int32_t fmini_mulr(int32_t a, uint32_t k)
  * the contour up to 5 octaves; EMPHASIS is the dial 0 .. 10 (FMINI_K) with the hardware's passband loss (FMINI_TRIM). With
  * the mixer silent and EMPHASIS past 8 the ladder sings a sine at the singing pitch, 1 V/oct over the keyboard.
  * Q formats: signals +-32768 (tanh(1)); the states Q8 (a quiet ladder at a low cutoff moves less than a LSB a sample); G Q16; the prediction's coefficients c Q14; k Q12. */
-static void fmini_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
+static RAMFAST void fmini_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
     const int16_t *p = t->p;
     const uint8_t *g = fmini_eff[(uint32_t)(t - trk) % NTRK].p;

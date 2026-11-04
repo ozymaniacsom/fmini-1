@@ -61,6 +61,11 @@
 #define C1_RUN(fn, arg) fm1_cpu1_run(fn, arg)
 #define C1_WAIT() fm1_cpu1_wait()
 #endif
+#ifndef RAMFAST
+#define RAMFAST __attribute__((section(".fast_text")))   /* (Ozy's) the sound's hottest loops run from RAM (app.ld): no
+                                                          * fetch through the flash cache both cores share. Never with
+                                                          * the flash off (they call into it): not .ram_text */
+#endif
 #include "fm1_input.h"
 #include "fm1_timer.h"
 #include "fm1_audio.h"

@@ -5,9 +5,39 @@ this file is the notice of the modifications and their dates). Based on FMini-1 
 The version number stays FMini-1's (`FMINI_VERSION` in `firmware/src/core.h`), so the web editor keeps working with it.
 
 The two-core voices and the first look were installed and working on Ozy's FM-1 (2026-11-04). The effects on the second
-core, the balance and the dark look were installed on 2026-11-04 (the first governor tore more: see the later entry). The
-later changes have not been tested on an FM-1 yet.
+core, the balance and the dark look were installed on 2026-11-04 (the first governor tore more: see the later entry). The gentle
+governor and the faster ladder work on it (2026-11-04); the RAM loops (the last entry) have not been tested yet.
 
+## 2026-11-04 (last): the sound's hottest loops run from RAM
+
+The gentle governor and the faster ladder worked on Ozy's FM-1 with DREAMER. The next step for more voices: the FM-1
+runs its code from the flash through a cache, and with the effects on the second core both cores fetch different
+loops through that cache at once. The loops that run every sample now run from RAM, copied there at boot, as the flash
+driver's code (`.ram_text`) and the second core's waiting loop (`.c1_text`) already are.
+
+- **In RAM:** `fmini_render`, `fmini_wave` and `fmini_contour` (the voices), `cho_block`, `dly_block`, `rev_room`,
+  `rev_spring`, `spring_one`, `rev_hall` and `rev_plate` (the buses), marked `RAMFAST` (`felucca.c`: section
+  `.fast_text`; an empty mark on the host and in the browser, `core.h`).
+- **Where:** `app.ld` places `.fast_text` between `.ram_text` and `.c1_text`, in the RAM code region (0x01C00000, 24 KiB, of
+  which the flash driver and the waiting loop used about 4), so the guard's one RAM code window (`hal/fm1_guard.h`)
+  already covers it. In the one-core build, it now ends at `.fast_text`'s end.
+- **Boot:** `main.c fm1_cstart` copies it, after `.ram_text`.
+- **Build:** `tools/build.py` puts it in the image at its load address. It is not checked as `.ram_text` is (no calls),
+  because it calls into the flash. Nothing runs it with the flash off: the flash is written with interrupts off.
+
+The sound is the same: the same code, somewhere else. If it does not fit, the link fails with "region RAMTEXT
+overflowed" (then fewer functions get `RAMFAST`).
+
+| File | Change |
+| --- | --- |
+| `firmware/app.ld` | `.fast_text` (`_ft_start`, `_ft_end`, `_ft_load`) |
+| `firmware/hal/fm1_guard.h` | The one-core build's RAM code window ends at `_ft_end` |
+| `firmware/src/felucca.c`, `firmware/src/core.h` | `RAMFAST` (the host: empty) |
+| `firmware/src/main.c` | The copy at boot |
+| `firmware/src/eng_fmini.c`, `firmware/src/fx.c` | `RAMFAST` on the loops above |
+| `firmware/src/voice.c` | `VS_TICKS` is 0 on the host (no TIMER4 there) |
+| `tools/build.py` | `fasttext.bin` into the image |
+| `web/emu/felucca_web.c` | The three new link symbols, for the browser build |
 ## 2026-11-04 (later): the governor made gentle, the voice render faster
 
 The first governor (below) made the tearing worse with DREAMER (preset 26) on an FM-1. Whenever more voices sounded

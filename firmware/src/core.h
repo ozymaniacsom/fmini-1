@@ -7,6 +7,10 @@
  * Sections: sizes, parameters, voices and engines, tracks and the song, system. */
 #include <stdint.h>
 
+#ifndef RAMFAST
+#define RAMFAST                          /* (Ozy's) the host and the browser: the firmware's is felucca.c's (.fast_text) */
+#endif
+
 /* ------------------------------------------------------------ sizes --- */
 #if FELUCCA_FMINI_ONLY
 #define NVOICE 12                /* FMini-1: 12 voices when the instrument is set to POLY */
