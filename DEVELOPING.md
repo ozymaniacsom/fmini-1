@@ -142,10 +142,10 @@ The model and its numbers are in `tools/fmini_filter.py` (read its header); the 
   change fades through `mx[1].b`, free whenever the buses run.
 - **The CPU governor (Ozy's).** `audio.c gov_half`, each half: the voice cost (`gov_voice`, ticks without TIMER5's,
   a quarter of the way up a half, slowly down, measured with 4 or more voices) and the idle render (`gov_base`, with none)
-  give `voice.c vcap`, the voices that fit in 82 % of a half (4 to 12). Only new notes see it: `voice_room` and
+  give `voice.c vcap`, the voices that fit in 76 % of a half (4 to 12). Only new notes see it: `voice_room` and
   `voice_alloc` budget against `vcap`, not `NVOICE` (over it, the part's oldest released voice is taken over in place).
-  Only a half over 95 % sheds a voice (`shed_voice` -> `voice_kill`: stage 4 fades -6 dB a block, ~7 ms). `cpu_crit`
-  (the "CPU High" pop-up) counts only halves past their time. Console: `gov_vcap`, `gov_voice_us`, `gov_base_us`,
+  Only a half over 90 % sheds a voice (`shed_voice` -> `voice_kill`: stage 4 fades -6 dB a block, ~7 ms). `cpu_crit`
+  (the "CPU High" pop-up) counts only halves past their time, and each one raises `gov_voice` by an eighth. Console: `gov_vcap`, `gov_voice_us`, `gov_base_us`,
   `gov_hot`. The FMINI release ends at -60 dB (`env_tick`). `fmini_render`'s ladder loop is split LP / HP, its ramp
   in registers (`fmini_amp`) and its tanh from RAM (`fmini_th`, `fmini_tanh`): the same numbers as dsp.c's.
 - **RAM loops (Ozy's).** `RAMFAST` (`felucca.c`) puts a function in `.fast_text` (`app.ld`, in RAMTEXT between `.ram_text` and

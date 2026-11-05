@@ -6,8 +6,18 @@ The version number stays FMini-1's (`FMINI_VERSION` in `firmware/src/core.h`), s
 
 The two-core voices and the first look were installed and working on Ozy's FM-1 (2026-11-04). The effects on the second
 core, the balance and the dark look were installed on 2026-11-04 (the first governor tore more: see the later entry). The gentle
-governor and the faster ladder work on it (2026-11-04); the RAM loops (the last entry) have not been tested yet.
+governor and the faster ladder work on it (2026-11-04); the RAM loop works (stable, a tear now and then); the
+final entry's headroom has not been tested yet.
 
+## 2026-11-04 (final): more headroom for the governor
+
+With the filter's loop in RAM, DREAMER was stable on Ozy's FM-1, with a tear now and then. A burst of new notes can
+overshoot before the governor's estimate catches up. Now (`audio.c gov_half`):
+
+- The cap targets 76 % of a half (was 82 %), so about one voice fewer on the heaviest patches.
+- A voice fades when a half passes 90 % (was 95 %).
+- A half that ran late (a tear) raises the voice cost estimate by an eighth at once; it falls back slowly when it was a
+  one-off.
 ## 2026-11-04 (last): the sound's hottest loops run from RAM
 
 The gentle governor and the faster ladder worked on Ozy's FM-1 with DREAMER. The next step for more voices: the FM-1

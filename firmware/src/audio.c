@@ -56,8 +56,8 @@ static volatile uint8_t shed_req;
 volatile uint32_t cpu_crit;                            /* halves that ran late: the FMINI pop-up "Warning: CPU High" (fmini_app.c) */
 static uint32_t shed_count;
 #define GOV_HALF ((HALF_FRAMES * 1000000u / FS) * FM1_TICKS_PER_US)   /* a half, TIMER4 ticks */
-#define GOV_TARGET (GOV_HALF * 82u / 100u)
-#define GOV_HOT (GOV_HALF * 95u / 100u)
+#define GOV_TARGET (GOV_HALF * 76u / 100u)             /* (was 82 %: a tear now and then with DREAMER, 2026-11-04) */
+#define GOV_HOT (GOV_HALF * 90u / 100u)                /* (was 95 %) */
 #define GOV_NMIN 4u
 static uint32_t gov_base = GOV_HALF / 8u;              /* ticks: a half's render with no voice (the buses, the master) */
 static uint32_t gov_voice = GOV_HALF / 24u;            /* ticks: a voice's share of a half (12 fit, until measured) */
@@ -89,10 +89,13 @@ static void gov_half(uint32_t all)
         else
             gov_voice -= (gov_voice - per) / 32u;      /* down: slower (~0.1 s) */
     }
+    if (all > GOV_HALF) {
+        cpu_crit++;                                    /* past its time: a tear ("Warning: CPU High") */
+        gov_voice += gov_voice / 8u + 1u;              /* .. and a voice costs more than thought: 1/8 more (it falls back
+                                                        * slowly when it was a one-off) */
+    }
     cap = gov_voice && GOV_TARGET > gov_base ? (GOV_TARGET - gov_base) / gov_voice : 0u;
     vcap = (uint8_t)(cap < VCAP_MIN ? VCAP_MIN : cap > NVOICE ? NVOICE : cap);
-    if (all > GOV_HALF)
-        cpu_crit++;                                    /* past its time: a tear ("Warning: CPU High") */
     if (all > GOV_HOT) {
         gov_hot++;
         shed_req = 1;                                  /* the deadline near: a voice fades (~7 ms) */
